@@ -1,9 +1,10 @@
 buildscript {
     repositories {
         mavenCentral()
+        google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.1.2'
+        classpath 'com.android.tools.build:gradle:7.3.1'
     }
 }
 
@@ -17,6 +18,7 @@ apply plugin: 'com.android.application'
 repositories {
     mavenLocal()
     mavenCentral()
+    google()
 }
 
 android {
@@ -38,12 +40,13 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    buildToolsVersion '23.0.1'
 }
 
 dependencies {
-    compile 'com.android.support:appcompat-v7:22.1.1'
-    compile 'com.github.pires:obd-java-api:1.0-RC16'
-    compile 'org.roboguice:roboguice:3.+'
-    provided 'org.roboguice:roboblender:3.+'
-    compile 'com.squareup.retrofit:retrofit:1.9.0'
+    implementation 'com.android.support:appcompat-v7:22.1.1'
+    implementation 'com.github.pires:obd-java-api:1.0-RC16'
+    implementation 'org.roboguice:roboguice:3.+'
+    compileOnly 'org.roboguice:roboblender:3.+'
+    implementation 'com.squareup.retrofit:retrofit:1.9.0'
 }
