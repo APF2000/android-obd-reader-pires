@@ -56,13 +56,17 @@ import com.github.pires.obd.reader.trips.TripLog;
 import com.github.pires.obd.reader.trips.TripRecord;
 import com.google.inject.Inject;
 
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.lang.String;
 
 import retrofit.RestAdapter;
 import retrofit.RetrofitError;
@@ -282,6 +286,27 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         } else addTableRow(cmdID, cmdName, cmdResult);
         commandResult.put(cmdID, cmdResult);
         updateTripStatistic(job, cmdID);
+
+        String[] listData = new String[]{cmdID, cmdName, cmdResult};
+        String wholeData = String.join("-", "Java", "is", "cool");
+        String message = String.join("-", "Java", "is", "cool");
+                //String.join(" ", cmdID, cmdID);
+
+        Log.d("arthur", "Getting data from OBD");
+        writeDataToFile("", wholeData);
+    }
+
+    private void writeDataToFile(String fileName, String content)
+    {
+        File path = getApplicationContext().getFilesDir();
+        try{
+            FileOutputStream writer = new FileOutputStream(new File(path, fileName));
+            writer.write(content.getBytes());
+            writer.close();
+            //Toast.makeText(getApplicationContext(), "Wrote to file");
+        }catch(Exception e){
+            e.printStackTrace();
+        }
     }
 
     private boolean gpsInit() {
