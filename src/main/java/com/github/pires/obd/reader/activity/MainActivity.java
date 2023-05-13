@@ -36,6 +36,7 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.text.TextUtils;
 
 import com.github.pires.obd.commands.ObdCommand;
 import com.github.pires.obd.commands.SpeedCommand;
@@ -66,7 +67,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.lang.String;
 
 import retrofit.RestAdapter;
 import retrofit.RetrofitError;
@@ -78,6 +78,8 @@ import roboguice.inject.InjectView;
 
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsDistanceUpdatePeriod;
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsUpdatePeriod;
+
+import java.sql.*;
 
 // Some code taken from https://github.com/barbeau/gpstest
 
@@ -288,12 +290,12 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         updateTripStatistic(job, cmdID);
 
         String[] listData = new String[]{cmdID, cmdName, cmdResult};
-        String wholeData = String.join("-", "Java", "is", "cool");
-        String message = String.join("-", "Java", "is", "cool");
-                //String.join(" ", cmdID, cmdID);
+        String wholeData = TextUtils.join(" ", listData);
 
         Log.d("arthur", "Getting data from OBD");
-        writeDataToFile("", wholeData);
+        writeDataToFile("DELETEME.txt", wholeData);
+
+//        String currentDir = context.getFileStreamPath();
     }
 
     private void writeDataToFile(String fileName, String content)
@@ -369,6 +371,19 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     protected void onStart() {
         super.onStart();
         Log.d(TAG, "Entered onStart...");
+
+        try{
+            Class.forName("com.mysql.jdbc.Driver");
+            Connection con = DriverManager.getConnection();
+//here sonoo is database name, root is username and password
+            Statement stmt=con.createStatement();
+            ResultSet rs=stmt.executeQuery("select * from teste_tcc");
+            while(rs.next())
+                System.out.println(rs.getInt(1)+"  "+rs.getString(2)+"  "+rs.getString(3));
+            con.close();
+        }catch(Exception e){
+            System.out.println(e);
+        }
     }
 
     @Override
