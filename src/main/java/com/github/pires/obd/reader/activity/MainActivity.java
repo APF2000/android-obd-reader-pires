@@ -38,6 +38,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.text.TextUtils;
 
+import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.toolbox.StringRequest;
 import com.github.pires.obd.commands.ObdCommand;
 import com.github.pires.obd.commands.SpeedCommand;
 import com.github.pires.obd.commands.engine.RPMCommand;
@@ -81,6 +83,12 @@ import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsUpdatePe
 
 import java.sql.*;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.ImageLoader;
+import com.android.volley.toolbox.Volley;
+import com.android.volley.Response.Listener;
+
 // Some code taken from https://github.com/barbeau/gpstest
 
 @ContentView(R.layout.main)
@@ -101,6 +109,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private static final int REQUEST_ENABLE_BT = 1234;
     private static boolean bluetoothDefaultIsEnable = false;
 
+    RequestQueue queue;
+
     static {
         RoboGuice.setUseAnnotationDatabases(false);
     }
@@ -114,6 +124,15 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     /// the trip log
     private TripLog triplog;
     private TripRecord currentTrip;
+
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.d(TAG, "Entered onStart...");
+
+        queue = Volley.newRequestQueue(this);
+    }
 
     @InjectView(R.id.compass_text)
     private TextView compass;
@@ -261,6 +280,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         });
     }
 
+    void foo()
+    {
+        Log.d("arthur","request worked");
+    }
+
     public void stateUpdate(final ObdCommandJob job) {
         final String cmdName = job.getCommand().getName();
         String cmdResult = "";
@@ -293,7 +317,21 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         String wholeData = TextUtils.join(" ", listData);
 
         Log.d("arthur", "Getting data from OBD");
-        writeDataToFile("DELETEME.txt", wholeData);
+//        writeDataToFile("DELETEME.txt", wholeData);
+
+
+        String url = "http://10.0.2.2:5000/getAllData";
+
+        // Request a string response from the provided URL.
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                response -> foo(),
+                error -> Log.d("arthur","request did not work: " + error.toString())
+        );
+        stringRequest.setRetryPolicy(new DefaultRetryPolicy( 50000, 5, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+
+        // Add the request to the RequestQueue.
+        queue.add(stringRequest);
 
 //        String currentDir = context.getFileStreamPath();
     }
@@ -363,28 +401,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         // create a log instance for use by this application
         triplog = TripLog.getInstance(this.getApplicationContext());
-        
+
         obdStatusTextView.setText(getString(R.string.status_obd_disconnected));
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        Log.d(TAG, "Entered onStart...");
-
-        try{
-            Class.forName("com.mysql.jdbc.Driver");
-            Connection con = DriverManager.getConnection();
-//here sonoo is database name, root is username and password
-            Statement stmt=con.createStatement();
-            ResultSet rs=stmt.executeQuery("select * from teste_tcc");
-            while(rs.next())
-                System.out.println(rs.getInt(1)+"  "+rs.getString(2)+"  "+rs.getString(3));
-            con.close();
-        }catch(Exception e){
-            System.out.println(e);
-        }
-    }
 
     @Override
     protected void onDestroy() {
