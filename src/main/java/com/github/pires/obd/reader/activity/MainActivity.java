@@ -69,6 +69,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -93,6 +94,7 @@ import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.Volley;
 import com.android.volley.Response.Listener;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 // Some code taken from https://github.com/barbeau/gpstest
@@ -319,11 +321,19 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         commandResult.put(cmdID, cmdResult);
         updateTripStatistic(job, cmdID);
 
-        String[] listData = new String[]{cmdID, cmdName, cmdResult};
-        String wholeData = TextUtils.join(" ", listData);
+
+//        String[] listData = new String[]{cmdID, cmdName, cmdResult};
+//        String wholeData = TextUtils.join(" ", listData);
+        Date currentTime = Calendar.getInstance().getTime();
+
+        // https://stackoverflow.com/questions/10717838/how-to-create-json-format-data-in-android
+        JSONArray jsonContent = new JSONArray();
+        jsonContent.put(cmdID);
+        jsonContent.put(cmdName);
+        jsonContent.put(cmdResult);
 
         Log.d("arthur", "Getting data from OBD");
-      writeDataToFile("DELETEME.txt", wholeData);
+      writeDataToFile("DELETEME.txt", currentTime.toString() + " " + jsonContent.toString());
 
     }
 
@@ -331,6 +341,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     {
         File path = Environment.getExternalStorageDirectory();
         File file = new File(path, fileName);
+
+        content += "\n";
 
         try {
             // Verifica se o diretório existe, caso contrário, cria-o
