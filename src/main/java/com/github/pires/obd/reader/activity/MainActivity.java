@@ -89,6 +89,8 @@ import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.Volley;
 import com.android.volley.Response.Listener;
 
+import org.json.JSONObject;
+
 // Some code taken from https://github.com/barbeau/gpstest
 
 @ContentView(R.layout.main)
@@ -317,30 +319,48 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         String wholeData = TextUtils.join(" ", listData);
 
         Log.d("arthur", "Getting data from OBD");
-//        writeDataToFile("DELETEME.txt", wholeData);
+      writeDataToFile("DELETEME.txt", wholeData);
 
 
-        String url = "http://10.0.2.2:5000/getAllData";
+//        String url = "http://flask-test-app-env.eba-5dbnxt7c.us-west-1.elasticbeanstalk.com/getAllData";
+//
+//        // Request a string response from the provided URL.
+//        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+//                response -> foo(),
+//                error -> Log.d("arthur","request did not work: " + error.toString())
+//        );
+//        stringRequest.setRetryPolicy(new DefaultRetryPolicy( 50000, 5, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+//
+//
+//        // Add the request to the RequestQueue.
+//        queue.add(stringRequest);
 
-        // Request a string response from the provided URL.
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                response -> foo(),
-                error -> Log.d("arthur","request did not work: " + error.toString())
-        );
-        stringRequest.setRetryPolicy(new DefaultRetryPolicy( 50000, 5, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
-
-
-        // Add the request to the RequestQueue.
-        queue.add(stringRequest);
-
-//        String currentDir = context.getFileStreamPath();
+//        try {
+////            RequestQueue requestQueue = Volley.newRequestQueue(this);
+//            JSONObject jsonBody = new JSONObject();
+//            jsonBody.put("cmd_id", "523687941");
+//            jsonBody.put("cmd_name", "cmd_from_android");
+//            jsonBody.put("cmd_result", "result_android");
+//            final String mRequestBody = jsonBody.toString();
+//
+//            String post_url = "http://flask-test-app-env.eba-5dbnxt7c.us-west-1.elasticbeanstalk.com/getAllData";
+//            StringRequest post_request = new StringRequest(Request.Method.POST, post_url,
+//                    response -> foo(),
+//                    error -> Log.d("arthur", "post did not work: " + error.toString())
+//            );
+//            queue.add(post_request);
+//        }catch (Exception e)
+//        {
+//            Log.d("arthur", "post did not work: " + e.toString());
+//        }
     }
 
     private void writeDataToFile(String fileName, String content)
     {
         File path = getApplicationContext().getFilesDir();
         try{
-            FileOutputStream writer = new FileOutputStream(new File(path, fileName));
+            FileOutputStream writer = openFileOutput(fileName, Context.MODE_PRIVATE);
+                    //new FileOutputStream(new File(path, fileName));
             writer.write(content.getBytes());
             writer.close();
             //Toast.makeText(getApplicationContext(), "Wrote to file");
