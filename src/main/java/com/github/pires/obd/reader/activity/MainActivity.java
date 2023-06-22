@@ -329,20 +329,20 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     private void writeDataToFile(String fileName, String content)
     {
-//        File path = getExternalStorageDirectory();
-        File path = Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES);
+        File path = Environment.getExternalStorageDirectory();
         File file = new File(path, fileName);
-                // new File(, fileName);
-//                getApplicationContext().getFilesDir();
-        try{
-            OutputStream os = new FileOutputStream(file);
-            FileOutputStream writer = openFileOutput(fileName, Context.MODE_PRIVATE);
-                    //new FileOutputStream(new File(path, fileName));
+
+        try {
+            // Verifica se o diretório existe, caso contrário, cria-o
+            if (!path.exists()) {
+                path.mkdirs();
+            }
+
+            // append to file
+            FileOutputStream writer = new FileOutputStream(file, true);
             writer.write(content.getBytes());
             writer.close();
-            //Toast.makeText(getApplicationContext(), "Wrote to file");
-        }catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

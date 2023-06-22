@@ -225,6 +225,7 @@ public class ObdGatewayService extends AbstractGatewayService {
                 });
             }
         }
+        Log.d("arthur", "finished getting data");
     }
 
     /**
