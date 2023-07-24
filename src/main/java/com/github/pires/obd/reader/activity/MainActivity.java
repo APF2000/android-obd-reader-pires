@@ -104,7 +104,7 @@ import org.json.JSONObject;
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
-    private HashMap<String, Date> resourceNameTolastDataUpdate;
+    private HashMap<String, Date> resourceNameTolastDataUpdate = new HashMap<String, Date>();
     private static final String TAG = MainActivity.class.getName();
     private static final int NO_BLUETOOTH_ID = 0;
     private static final int BLUETOOTH_DISABLED = 1;
@@ -301,6 +301,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         String cmdResult = "";
         final String cmdID = LookUpCommand(cmdName);
 
+        final long minSecondsBetweenData = 20;
+
         if (job.getState().equals(ObdCommandJob.ObdCommandJobState.EXECUTION_ERROR)) {
             cmdResult = job.getCommand().getResult();
             if (cmdResult != null && isServiceBound) {
@@ -330,12 +332,16 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         Date currentTime = Calendar.getInstance().getTime();
 
         Date lastUpdateTime = resourceNameTolastDataUpdate.get(cmdName);
-        if(lastUpdateTime == null) lastUpdateTime = Calendar.getInstance().getTime();
+        if(lastUpdateTime == null)
+        {
+            lastUpdateTime = new Date();
+            lastUpdateTime.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+        }
 
         long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
         long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
-        if(diffSeconds <= 20) return;
+        if(diffSeconds <= minSecondsBetweenData) return;
         resourceNameTolastDataUpdate.put(cmdName, currentTime);
 
         // https://stackoverflow.com/questions/10717838/how-to-create-json-format-data-in-android
