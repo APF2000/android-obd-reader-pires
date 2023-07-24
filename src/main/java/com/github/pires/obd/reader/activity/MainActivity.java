@@ -73,6 +73,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import retrofit.RestAdapter;
@@ -87,6 +88,7 @@ import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsDistance
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsUpdatePeriod;
 
 import java.sql.*;
+import java.util.concurrent.TimeUnit;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -102,6 +104,7 @@ import org.json.JSONObject;
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
+    private HashMap<String, Date> resourceNameTolastDataUpdate;
     private static final String TAG = MainActivity.class.getName();
     private static final int NO_BLUETOOTH_ID = 0;
     private static final int BLUETOOTH_DISABLED = 1;
@@ -325,6 +328,15 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 //        String[] listData = new String[]{cmdID, cmdName, cmdResult};
 //        String wholeData = TextUtils.join(" ", listData);
         Date currentTime = Calendar.getInstance().getTime();
+
+        Date lastUpdateTime = resourceNameTolastDataUpdate.get(cmdName);
+        if(lastUpdateTime == null) lastUpdateTime = Calendar.getInstance().getTime();
+
+        long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
+        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+
+        if(diffSeconds <= 20) return;
+        resourceNameTolastDataUpdate.put(cmdName, currentTime);
 
         // https://stackoverflow.com/questions/10717838/how-to-create-json-format-data-in-android
         JSONArray jsonContent = new JSONArray();
