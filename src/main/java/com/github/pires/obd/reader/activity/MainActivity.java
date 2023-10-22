@@ -69,6 +69,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.text.DecimalFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -144,6 +145,55 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         queue = Volley.newRequestQueue(this);
     }
+
+
+    //@InjectView(R.id.acceleration_text)
+    //private TextView acceleration;
+    private final SensorEventListener accelerationListener = new SensorEventListener() {
+        public void onSensorChanged(SensorEvent event) {
+            /*
+            // alpha is calculated as t / (t + dT)
+            // with t, the low-pass filter's time-constant
+            // and dT, the event delivery rate
+            final float alpha = 0.8;
+            gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
+            gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
+            gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
+            linear_acceleration[0] = event.values[0] - gravity[0];
+            linear_acceleration[1] = event.values[1] - gravity[1];
+            linear_acceleration[2] = event.values[2] - gravity[2];
+        }
+        */
+            Date currentTime = Calendar.getInstance().getTime();
+
+            float x = event.values[0];
+            float y = event.values[1];
+            float z = event.values[2];
+
+            DecimalFormat df = new DecimalFormat("0.00");
+            String acc_x = df.format(x);
+            String acc_y = df.format(y);
+            String acc_z = df.format(z);
+
+            JSONArray jsonAcceleration = new JSONArray();
+            jsonAcceleration.put(acc_x);
+            jsonAcceleration.put(acc_y);
+            jsonAcceleration.put(acc_z);
+
+
+
+            Log.d("arthur", "Getting acceleration data");
+            writeDataToFile("TESTEACC.txt", currentTime.toString() + " " + jsonAcceleration.toString());
+
+            //updateTextView(acceleration, acc);
+
+        }
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            // do nothing
+        }
+    };
+
+
 
     @InjectView(R.id.compass_text)
     private TextView compass;
@@ -240,6 +290,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     };
     private Sensor orientSensor = null;
+    private Sensor accelerationSensor = null;
     private PowerManager.WakeLock wakeLock = null;
     private boolean preRequisites = true;
     private ServiceConnection serviceConn = new ServiceConnection() {
@@ -350,6 +401,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         jsonContent.put(cmdName);
         jsonContent.put(cmdResult);
 
+
         Log.d("arthur", "Getting data from OBD");
       writeDataToFile("DELETEME.txt", currentTime.toString() + " " + jsonContent.toString());
 
@@ -427,6 +479,12 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         else
             showDialog(NO_ORIENTATION_SENSOR);
 
+        sensors = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER);
+        if (sensors.size() > 0)
+            accelerationSensor = sensors.get(0);
+        else
+            showDialog(NO_GPS_SUPPORT);
+
         // create a log instance for use by this application
         triplog = TripLog.getInstance(this.getApplicationContext());
 
@@ -474,6 +532,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         super.onResume();
         Log.d(TAG, "Resuming..");
         sensorManager.registerListener(orientListener, orientSensor,
+                SensorManager.SENSOR_DELAY_UI);
+        wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
+                "ObdReader");
+
+        sensorManager.registerListener(accelerationListener, accelerationSensor,
                 SensorManager.SENSOR_DELAY_UI);
         wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 "ObdReader");
