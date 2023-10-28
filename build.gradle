@@ -52,4 +52,6 @@ dependencies {
     implementation 'com.squareup.retrofit:retrofit:1.9.0'
     implementation files('libs/mysql-connector-j-8.0.33.jar')
     implementation 'com.android.volley:volley:1.2.1'
+
+    implementation 'com.google.android.gms:play-services-location:21.0.1'
 }
