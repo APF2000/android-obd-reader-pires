@@ -1,5 +1,7 @@
 package com.github.pires.obd.reader.activity;
 
+import static android.os.Environment.getExternalStorageDirectory;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -21,6 +23,7 @@ import android.location.LocationManager;
 import android.location.LocationProvider;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
@@ -36,7 +39,10 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.text.TextUtils;
 
+import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.toolbox.StringRequest;
 import com.github.pires.obd.commands.ObdCommand;
 import com.github.pires.obd.commands.SpeedCommand;
 import com.github.pires.obd.commands.engine.RPMCommand;
@@ -56,13 +62,23 @@ import com.github.pires.obd.reader.trips.TripLog;
 import com.github.pires.obd.reader.trips.TripRecord;
 import com.google.inject.Inject;
 
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+
 import java.text.DecimalFormat;
+
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+
 import java.text.SimpleDateFormat;
+import java.text.DecimalFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import retrofit.RestAdapter;
@@ -76,11 +92,24 @@ import roboguice.inject.InjectView;
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsDistanceUpdatePeriod;
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsUpdatePeriod;
 
+import java.sql.*;
+import java.util.concurrent.TimeUnit;
+
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.ImageLoader;
+import com.android.volley.toolbox.Volley;
+import com.android.volley.Response.Listener;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 // Some code taken from https://github.com/barbeau/gpstest
 
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
+    private HashMap<String, Date> resourceNameTolastDataUpdate = new HashMap<String, Date>();
     private static final String TAG = MainActivity.class.getName();
     private static final int NO_BLUETOOTH_ID = 0;
     private static final int BLUETOOTH_DISABLED = 1;
@@ -96,6 +125,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private static final int REQUEST_ENABLE_BT = 1234;
     private static boolean bluetoothDefaultIsEnable = false;
 
+    RequestQueue queue;
+
     static {
         RoboGuice.setUseAnnotationDatabases(false);
     }
@@ -109,6 +140,64 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     /// the trip log
     private TripLog triplog;
     private TripRecord currentTrip;
+
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.d(TAG, "Entered onStart...");
+
+        queue = Volley.newRequestQueue(this);
+    }
+
+
+    //@InjectView(R.id.acceleration_text)
+    //private TextView acceleration;
+    private final SensorEventListener accelerationListener = new SensorEventListener() {
+        public void onSensorChanged(SensorEvent event) {
+            /*
+            // alpha is calculated as t / (t + dT)
+            // with t, the low-pass filter's time-constant
+            // and dT, the event delivery rate
+            final float alpha = 0.8;
+            gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
+            gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
+            gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
+            linear_acceleration[0] = event.values[0] - gravity[0];
+            linear_acceleration[1] = event.values[1] - gravity[1];
+            linear_acceleration[2] = event.values[2] - gravity[2];
+        }
+        */
+            Date currentTime = Calendar.getInstance().getTime();
+
+            float x = event.values[0];
+            float y = event.values[1];
+            float z = event.values[2];
+
+            DecimalFormat df = new DecimalFormat("0.00");
+            String acc_x = df.format(x);
+            String acc_y = df.format(y);
+            String acc_z = df.format(z);
+
+            JSONArray jsonAcceleration = new JSONArray();
+            jsonAcceleration.put(acc_x);
+            jsonAcceleration.put(acc_y);
+            jsonAcceleration.put(acc_z);
+
+
+
+            Log.d("arthur", "Getting acceleration data");
+            writeDataToFile("TESTEACC.txt", currentTime.toString() + " " + jsonAcceleration.toString());
+
+            //updateTextView(acceleration, acc);
+
+        }
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            // do nothing
+        }
+    };
+
+
 
     @InjectView(R.id.compass_text)
     private TextView compass;
@@ -295,10 +384,17 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         });
     }
 
+    void foo()
+    {
+        Log.d("arthur","request worked");
+    }
+
     public void stateUpdate(final ObdCommandJob job) {
         final String cmdName = job.getCommand().getName();
         String cmdResult = "";
         final String cmdID = LookUpCommand(cmdName);
+
+        final long minSecondsBetweenData = 20;
 
         if (job.getState().equals(ObdCommandJob.ObdCommandJobState.EXECUTION_ERROR)) {
             cmdResult = job.getCommand().getResult();
@@ -322,6 +418,57 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         } else addTableRow(cmdID, cmdName, cmdResult);
         commandResult.put(cmdID, cmdResult);
         updateTripStatistic(job, cmdID);
+
+
+//        String[] listData = new String[]{cmdID, cmdName, cmdResult};
+//        String wholeData = TextUtils.join(" ", listData);
+        Date currentTime = Calendar.getInstance().getTime();
+
+        Date lastUpdateTime = resourceNameTolastDataUpdate.get(cmdName);
+        if(lastUpdateTime == null)
+        {
+            lastUpdateTime = new Date();
+            lastUpdateTime.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+        }
+
+        long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
+        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+
+        if(diffSeconds <= minSecondsBetweenData) return;
+        resourceNameTolastDataUpdate.put(cmdName, currentTime);
+
+        // https://stackoverflow.com/questions/10717838/how-to-create-json-format-data-in-android
+        JSONArray jsonContent = new JSONArray();
+        jsonContent.put(cmdID);
+        jsonContent.put(cmdName);
+        jsonContent.put(cmdResult);
+
+
+        Log.d("arthur", "Getting data from OBD");
+      writeDataToFile("DELETEME.txt", currentTime.toString() + " " + jsonContent.toString());
+
+    }
+
+    private void writeDataToFile(String fileName, String content)
+    {
+        File path = Environment.getExternalStorageDirectory();
+        File file = new File(path, fileName);
+
+        content += "\n";
+
+        try {
+            // Verifica se o diretório existe, caso contrário, cria-o
+            if (!path.exists()) {
+                path.mkdirs();
+            }
+
+            // append to file
+            FileOutputStream writer = new FileOutputStream(file, true);
+            writer.write(content.getBytes());
+            writer.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private boolean gpsInit() {
@@ -383,15 +530,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         // create a log instance for use by this application
         triplog = TripLog.getInstance(this.getApplicationContext());
-        
+
         obdStatusTextView.setText(getString(R.string.status_obd_disconnected));
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        Log.d(TAG, "Entered onStart...");
-    }
 
     @Override
     protected void onDestroy() {
@@ -441,8 +583,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 SensorManager.SENSOR_DELAY_UI);
         wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 "ObdReader");
-
-
 
         // get Bluetooth device
         final BluetoothAdapter btAdapter = BluetoothAdapter
