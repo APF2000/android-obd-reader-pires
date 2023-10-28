@@ -2,6 +2,8 @@ package com.github.pires.obd.reader.activity;
 
 import static android.os.Environment.getExternalStorageDirectory;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -12,6 +14,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -26,6 +29,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.util.Log;
 import android.view.Gravity;
@@ -40,6 +44,11 @@ import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.text.TextUtils;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.toolbox.StringRequest;
@@ -152,7 +161,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private TripLog triplog;
     private TripRecord currentTrip;
 
-    private String TAG = "MainActivity";
     private int FASTEST_INTERVAL = 8 * 1000; // 8 SECOND
     private int UPDATE_INTERVAL = 2000; // 2 SECOND
     private int FINE_LOCATION_REQUEST = 888;
@@ -554,6 +562,14 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         triplog = TripLog.getInstance(this.getApplicationContext());
 
         obdStatusTextView.setText(getString(R.string.status_obd_disconnected));
+
+//        setContentView(R.layout.activity_main);
+//        Toolbar toolbar = findViewById(R.id.toolbar);
+//        setSupportActionBar(toolbar);
+        initViewsAndListener();
+        if (checkPermissions()) {
+            initLocationUpdate();
+        }
     }
 
 
@@ -583,6 +599,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         super.onPause();
         Log.d(TAG, "Pausing..");
         releaseWakeLockIfHeld();
+
+        if (toast != null) {
+            toast.cancel();
+        }
     }
 
     /**
@@ -850,10 +870,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     }
 
-    public void onLocationChanged(Location location) {
-        mLastLocation = location;
-    }
-
     public void onStatusChanged(String provider, int status, Bundle extras) {
     }
 
@@ -939,32 +955,18 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     }
 
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        initViewsAndListener();
-        if (checkPermissions()) {
-            initLocationUpdate();
-        }
-
-    }
-
     private void initViewsAndListener() {
         toast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
-        tvLocationDetails=findViewById(R.id.tvLocationDetails);
-        mainLayout=findViewById(R.id.mainLayout);
-        findViewById(R.id.btnGetLocation).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (checkPermissions()) {
-                    initLocationUpdate();
-                }
-            }
-        });
+//        tvLocationDetails=findViewById(R.id.tvLocationDetails);
+//        mainLayout=findViewById(R.id.mainLayout);
+//        findViewById(R.id.btnGetLocation).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                if (checkPermissions()) {
+//                    initLocationUpdate();
+//                }
+//            }
+//        });
     }
 
     @SuppressLint("MissingPermission")
@@ -1011,7 +1013,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 Looper.myLooper());
 
     }
-    private void onLocationChanged(Location location) {
+    public void onLocationChanged(Location location) {
+        mLastLocation = location;
+
         // New location has now been determined
         String msg = "Updated Location: " +
                 java.lang.Double.toString(location.getLatitude()) + "," +
@@ -1020,7 +1024,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         toast.setText(msg);
         toast.show();
     }
-
 
     private boolean checkPermissions(){
         if (ContextCompat.checkSelfPermission(this,
@@ -1051,14 +1054,14 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 Log.i(TAG, "Location permission has now been granted. Now call initLocationUpdate");
                 initLocationUpdate();
             } else {
-                Snackbar.make(mainLayout, R.string.rational_location_permission,
-                                Snackbar.LENGTH_INDEFINITE)
-                        .setAction(getString(R.string.ok), new View.OnClickListener() {
-                            @Override
-                            public void onClick(View view) {
-                                requestPermissions();
-                            }
-                        }).show();
+//                Snackbar.make(mainLayout, R.string.rational_location_permission,
+//                                Snackbar.LENGTH_INDEFINITE)
+//                        .setAction(getString(R.string.ok), new View.OnClickListener() {
+//                            @Override
+//                            public void onClick(View view) {
+//                                requestPermissions();
+//                            }
+//                        }).show();
 
             }
         } else {
@@ -1073,15 +1076,5 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             toast.cancel();
         }
         super.onStop();
-    }
-
-
-    @Override
-    protected void onPause() {
-        if (toast != null) {
-            toast.cancel();
-        }
-        super.onPause();
-        super.onPause();
     }
 }
