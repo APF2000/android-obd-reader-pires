@@ -4,7 +4,7 @@ buildscript {
         google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.3.1'
+        classpath 'com.android.tools.build:gradle:7.4.2'
     }
 }
 
@@ -22,7 +22,7 @@ repositories {
 }
 
 android {
-    compileSdkVersion 22
+    compileSdkVersion 28
     android.buildToolsVersion "30.0.3"
     defaultConfig {
         minSdkVersion 14
@@ -30,9 +30,6 @@ android {
         applicationId 'com.github.pires.obd.reader'
     }
 
-    lintOptions {
-        abortOnError false
-    }
 
     buildTypes {
         release {
@@ -41,6 +38,10 @@ android {
         }
     }
     buildToolsVersion '30.0.3'
+    namespace 'com.github.pires.obd.reader'
+    lint {
+        abortOnError false
+    }
 }
 
 dependencies {
