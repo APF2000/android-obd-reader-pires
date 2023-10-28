@@ -4,7 +4,7 @@ buildscript {
         google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.4.2'
+        classpath 'com.android.tools.build:gradle:8.1.2'
     }
 }
 
@@ -22,11 +22,11 @@ repositories {
 }
 
 android {
-    compileSdkVersion 28
-    android.buildToolsVersion "30.0.3"
+    compileSdkVersion 30
+    // android.buildToolsVersion "30.0.3"
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 21
+        targetSdkVersion 30
         applicationId 'com.github.pires.obd.reader'
     }
 
@@ -45,7 +45,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.android.support:appcompat-v7:22.1.1'
+    implementation 'androidx.appcompat:appcompat:1.0.0'
     implementation 'com.github.pires:obd-java-api:1.0-RC16'
     implementation 'org.roboguice:roboguice:3.+'
 //    implementation files('C:\\Program Files (x86)\\MySQL\\Connector J 8.0\\mysql-connector-j-8.0.33.jar')
