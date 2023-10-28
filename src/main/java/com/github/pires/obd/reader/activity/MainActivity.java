@@ -66,8 +66,12 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+
+import java.text.DecimalFormat;
+
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+
 import java.text.SimpleDateFormat;
 import java.text.DecimalFormat;
 import java.util.Calendar;
@@ -226,6 +230,44 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             // do nothing
         }
     };
+
+    @InjectView(R.id.acceleration_text)
+    private TextView acceleration;
+    private final SensorEventListener accelerationListener = new SensorEventListener() {
+        public void onSensorChanged(SensorEvent event) {
+            /*
+            // alpha is calculated as t / (t + dT)
+            // with t, the low-pass filter's time-constant
+            // and dT, the event delivery rate
+
+            final float alpha = 0.8;
+
+            gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
+            gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
+            gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
+
+            linear_acceleration[0] = event.values[0] - gravity[0];
+            linear_acceleration[1] = event.values[1] - gravity[1];
+            linear_acceleration[2] = event.values[2] - gravity[2];
+        }
+
+*/
+            float x = event.values[0];
+            float y = event.values[1];
+            float z = event.values[2];
+
+            DecimalFormat df = new DecimalFormat("#0.0");
+            String acc = df.format(x);
+
+            updateTextView(acceleration, acc);
+
+        }
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            // do nothing
+        }
+    };
+
+
     @InjectView(R.id.BT_STATUS)
     private TextView btStatusTextView;
     @InjectView(R.id.OBD_STATUS)
@@ -471,6 +513,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         final BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
         if (btAdapter != null)
             bluetoothDefaultIsEnable = btAdapter.isEnabled();
+
 
         // get Orientation sensor
         List<Sensor> sensors = sensorManager.getSensorList(Sensor.TYPE_ORIENTATION);
