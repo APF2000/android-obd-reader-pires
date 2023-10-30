@@ -24,6 +24,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.location.LocationProvider;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
@@ -31,6 +32,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
@@ -175,6 +177,12 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     protected void onStart() {
         super.onStart();
         Log.d(TAG, "Entered onStart...");
+
+        ActivityCompat.requestPermissions( this,    new String[]{
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.MANAGE_EXTERNAL_STORAGE
+                }, 1
+        );
 
         queue = Volley.newRequestQueue(this);
     }
@@ -338,7 +346,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     gpsStatusTextView.setText(sb.toString());
                 }
                 if (prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, false)) {
-                    // Upload the current reading by http
+                    // UplFoad the current reading by http
                     final String vin = prefs.getString(ConfigActivity.VEHICLE_ID_KEY, "UNDEFINED_VIN");
                     Map<String, String> temp = new HashMap<String, String>();
                     temp.putAll(commandResult);
@@ -475,25 +483,34 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     }
 
-    private void writeDataToFile(String fileName, String content) {
+    private void writeDataToFile(String fileName, String content)  {
+
+        if (!Environment.isExternalStorageManager()){
+            Intent intent = new Intent();
+            intent.setAction(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+            Uri uri = Uri.fromParts("package", this.getPackageName(), null);
+            intent.setData(uri);
+            startActivity(intent);
+        }
+
         File path = Environment.getExternalStorageDirectory();
         File file = new File(path, fileName);
 
         content += "\n";
 
-        try {
-            // Verifica se o diretório existe, caso contrário, cria-o
-            if (!path.exists()) {
-                path.mkdirs();
-            }
+        if (!path.exists()) {
+            path.mkdirs();
+        }
 
+        try {
             // append to file
             FileOutputStream writer = new FileOutputStream(file, true);
             writer.write(content.getBytes());
             writer.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+        }catch(IOException e){
+            throw new RuntimeException(e);
         }
+
     }
 
     private boolean gpsInit() {
@@ -1022,12 +1039,14 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         mLastLocation = location;
 
         // New location has now been determined
-        String msg = "Updated Location: " +
+        String msg = "obd.pires: Updated Location: " +
                 java.lang.Double.toString(location.getLatitude()) + "," +
                 java.lang.Double.toString(location.getLongitude());
-        tvLocationDetails.setText(msg);
-        toast.setText(msg);
-        toast.show();
+        //tvLocationDetails.setText(msg);
+        //toast.setText(msg);
+        //toast.show();
+
+        Log.i(TAG, msg);
     }
 
     private boolean checkPermissions(){
