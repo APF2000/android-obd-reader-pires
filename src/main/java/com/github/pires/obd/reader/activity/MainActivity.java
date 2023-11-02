@@ -135,7 +135,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private Date lastUpdateTimeAcceleration;
     private Date lastUpdateTimeGPS;
 
-    private final long minSecondsBetweenData = 20;
+    private final long minSecondsBetweenData = 10;
     private static final String TAG = MainActivity.class.getName();
     private static final int NO_BLUETOOTH_ID = 0;
     private static final int BLUETOOTH_DISABLED = 1;
@@ -233,6 +233,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
             if (diffSeconds <= minSecondsBetweenData) return;
+            lastUpdateTimeAcceleration = currentTime;
 
             String accelerationString = jsonAcceleration.toString();
             Log.d("arthur", "Getting acceleration data: " + accelerationString);
@@ -1050,11 +1051,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     public void onLocationChanged(Location location) {
         mLastLocation = location;
 
-        Double latitude = Double.toString(location.getLatitude();
-        Double longitude = Double.toString(location.getLatitude();
+        String latitude = Double.toString(location.getLatitude());
+        String longitude = Double.toString(location.getLongitude());
 
         // New location has now been determined
-        String msg = "obd.pires.data: Updated Location: " + latitude + "," + longitude);
+        String msg = "obd.pires.data: Updated Location: " + latitude + "," + longitude;
         Log.i(TAG, msg);
         //tvLocationDetails.setText(msg);
         //toast.setText(msg);
@@ -1072,6 +1073,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
         if (diffSeconds <= minSecondsBetweenData) return;
+        lastUpdateTimeGPS = currentTime;
 
         JSONArray jsonGPS = new JSONArray();
         jsonGPS.put(latitude);
