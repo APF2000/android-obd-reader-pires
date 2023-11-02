@@ -132,6 +132,10 @@ import com.google.android.gms.location.SettingsClient;
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
     private HashMap<String, Date> resourceNameTolastDataUpdate = new HashMap<String, Date>();
+    private Date lastUpdateTimeAcceleration;
+    private Date lastUpdateTimeGPS;
+
+    private final long minSecondsBetweenData = 20;
     private static final String TAG = MainActivity.class.getName();
     private static final int NO_BLUETOOTH_ID = 0;
     private static final int BLUETOOTH_DISABLED = 1;
@@ -188,29 +192,25 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     }
 
 
-    //@InjectView(R.id.acceleration_text)
-    //private TextView acceleration;
+    @InjectView(R.id.acceleration_text)
+    private TextView acceleration;
     private final SensorEventListener accelerationListener = new SensorEventListener() {
         public void onSensorChanged(SensorEvent event) {
-            /*
             // alpha is calculated as t / (t + dT)
             // with t, the low-pass filter's time-constant
             // and dT, the event delivery rate
-            final float alpha = 0.8;
-            gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
-            gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
-            gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
-            linear_acceleration[0] = event.values[0] - gravity[0];
-            linear_acceleration[1] = event.values[1] - gravity[1];
-            linear_acceleration[2] = event.values[2] - gravity[2];
-        }
-        */
-            Date currentTime = Calendar.getInstance().getTime();
+            // final float alpha = 0.8;
+//            gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
+//            gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
+//            gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
+//            linear_acceleration[0] = event.values[0] - gravity[0];
+//            linear_acceleration[1] = event.values[1] - gravity[1];
+//            linear_acceleration[2] = event.values[2] - gravity[2];
+
 
             float x = event.values[0];
             float y = event.values[1];
             float z = event.values[2];
-
             DecimalFormat df = new DecimalFormat("0.00");
             String acc_x = df.format(x);
             String acc_y = df.format(y);
@@ -221,9 +221,22 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             jsonAcceleration.put(acc_y);
             jsonAcceleration.put(acc_z);
 
+            Date currentTime = Calendar.getInstance().getTime();
 
-            Log.d("arthur", "Getting acceleration data");
-            writeDataToFile("TESTEACC.txt", currentTime.toString() + " " + jsonAcceleration.toString());
+
+            if (lastUpdateTimeAcceleration == null) {
+                lastUpdateTimeAcceleration = new Date();
+                lastUpdateTimeAcceleration.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+            }
+
+            long diffInMillis = currentTime.getTime() - lastUpdateTimeAcceleration.getTime();
+            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+
+            if (diffSeconds <= minSecondsBetweenData) return;
+
+            String accelerationString = jsonAcceleration.toString();
+            Log.d("arthur", "Getting acceleration data: " + accelerationString);
+            writeDataToFile("DELETEME_ACCELERATION.txt", currentTime.toString() + " " + accelerationString);
 
             //updateTextView(acceleration, acc);
 
@@ -429,7 +442,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         String cmdResult = "";
         final String cmdID = LookUpCommand(cmdName);
 
-        final long minSecondsBetweenData = 20;
 
         if (job.getState().equals(ObdCommandJob.ObdCommandJobState.EXECUTION_ERROR)) {
             cmdResult = job.getCommand().getResult();
@@ -1038,15 +1050,37 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     public void onLocationChanged(Location location) {
         mLastLocation = location;
 
+        Double latitude = Double.toString(location.getLatitude();
+        Double longitude = Double.toString(location.getLatitude();
+
         // New location has now been determined
-        String msg = "obd.pires: Updated Location: " +
-                java.lang.Double.toString(location.getLatitude()) + "," +
-                java.lang.Double.toString(location.getLongitude());
+        String msg = "obd.pires.data: Updated Location: " + latitude + "," + longitude);
+        Log.i(TAG, msg);
         //tvLocationDetails.setText(msg);
         //toast.setText(msg);
         //toast.show();
 
-        Log.i(TAG, msg);
+        Date currentTime = Calendar.getInstance().getTime();
+
+
+        if (lastUpdateTimeGPS == null) {
+            lastUpdateTimeGPS = new Date();
+            lastUpdateTimeGPS.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+        }
+
+        long diffInMillis = currentTime.getTime() - lastUpdateTimeGPS.getTime();
+        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+
+        if (diffSeconds <= minSecondsBetweenData) return;
+
+        JSONArray jsonGPS = new JSONArray();
+        jsonGPS.put(latitude);
+        jsonGPS.put(longitude);
+
+        String gpsString = jsonGPS.toString();
+        Log.d(TAG, "obd.pires.data: Getting GPS data: " + gpsString);
+        writeDataToFile("DELETEME_GPS.txt", currentTime.toString() + " " + gpsString);
+
     }
 
     private boolean checkPermissions(){
