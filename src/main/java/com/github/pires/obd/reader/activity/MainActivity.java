@@ -19,6 +19,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.GnssStatus;
 import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
@@ -26,6 +27,7 @@ import android.location.LocationManager;
 import android.location.LocationProvider;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -48,6 +50,7 @@ import android.widget.Toast;
 import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -131,11 +134,13 @@ import com.google.android.gms.location.SettingsClient;
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
+    GnssStatus.Callback mGnssStatusCallback;
+    LocationManager mLocationManager;
     private float gravity[] = {0, 0, 0};
     private float linear_acceleration[] = {0, 0, 0};
 
     private HashMap<String, Date> resourceNameTolastDataUpdate = new HashMap<String, Date>();
-//    private Date lastHeadingUpdate = new Date();
+    //    private Date lastHeadingUpdate = new Date();
     private Date lastOrientUpdate = new Date();
     private Date lastRotationUpdate = new Date();
     private Date lastUpdateTimeAcceleration;
@@ -181,22 +186,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     private TextView tvLocationDetails;
     private LinearLayout mainLayout;
-
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        Log.d(TAG, "Entered onStart...");
-
-        ActivityCompat.requestPermissions( this,    new String[]{
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.MANAGE_EXTERNAL_STORAGE
-                }, 1
-        );
-
-        queue = Volley.newRequestQueue(this);
-    }
-
 
     @InjectView(R.id.acceleration_text)
     private TextView acceleration;
@@ -270,7 +259,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             // do nothing
         }
     };
-
 
 
     //    @InjectView(R.id.acceleration_text)
@@ -528,7 +516,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private Sensor rotationSensor = null;
     private Sensor accelerationSensor = null;
     private Sensor gravitySensor = null;
-//    private Sensor headingSensor = null;
+    //    private Sensor headingSensor = null;
     private PowerManager.WakeLock wakeLock = null;
     private boolean preRequisites = true;
     private ServiceConnection serviceConn = new ServiceConnection() {
@@ -643,9 +631,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     }
 
     @SuppressLint("NewApi")
-    private void writeDataToFile(String fileName, String content)  {
+    private void writeDataToFile(String fileName, String content) {
 
-        if (!Environment.isExternalStorageManager()){
+        if (!Environment.isExternalStorageManager()) {
             Intent intent = new Intent();
             intent.setAction(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
             Uri uri = Uri.fromParts("package", this.getPackageName(), null);
@@ -667,7 +655,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             FileOutputStream writer = new FileOutputStream(file, true);
             writer.write(content.getBytes());
             writer.close();
-        }catch(IOException e){
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
@@ -688,6 +676,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     // for ActivityCompat#requestPermissions for more details.
                     return false;
                 }
+
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+//                    LocationManager.registerGnssStatusCallback(GnssStatus.Callback)
+//                }
                 mLocService.addGpsStatusListener(this);
                 if (mLocService.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
 //                    gpsStatusTextView.setText(getString(R.string.status_gps_ready));
@@ -721,6 +713,14 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mLocationManager =
+                (LocationManager) getSystemService(LOCATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            mGnssStatusCallback = new GnssStatus.Callback() {
+                // TODO: add your code here!
+            };
+        }
 
         final BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
         if (btAdapter != null)
@@ -797,6 +797,37 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         final BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
         if (btAdapter != null && btAdapter.isEnabled() && !bluetoothDefaultIsEnable)
             btAdapter.disable();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            mLocationManager.registerGnssStatusCallback(mGnssStatusCallback);
+        }
+        mLocationManager.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER, 30000, 0, this
+        );
+
+        Log.d(TAG, "Entered onStart...");
+
+        ActivityCompat.requestPermissions(this, new String[]{
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.MANAGE_EXTERNAL_STORAGE
+                }, 1
+        );
+
+        queue = Volley.newRequestQueue(this);
     }
 
     @Override
@@ -1130,6 +1161,16 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     private synchronized void gpsStart() {
         if (!mGpsIsStarted && mLocProvider != null && mLocService != null && mLocService.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
             mLocService.requestLocationUpdates(mLocProvider.getName(), getGpsUpdatePeriod(prefs), getGpsDistanceUpdatePeriod(prefs), this);
             mGpsIsStarted = true;
         } else {
@@ -1319,6 +1360,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     protected void onStop() {
         if (toast != null) {
             toast.cancel();
+        }
+
+        mLocationManager.removeUpdates(this);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            mLocationManager.unregisterGnssStatusCallback(
+                    mGnssStatusCallback
+            );
         }
         super.onStop();
     }
