@@ -1,7 +1,5 @@
 package com.github.pires.obd.reader.activity;
 
-import static android.os.Environment.getExternalStorageDirectory;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -39,6 +37,7 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Surface;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
@@ -47,16 +46,11 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.android.volley.DefaultRetryPolicy;
-import com.android.volley.toolbox.StringRequest;
 import com.github.pires.obd.commands.ObdCommand;
 import com.github.pires.obd.commands.SpeedCommand;
 import com.github.pires.obd.commands.engine.RPMCommand;
@@ -83,16 +77,11 @@ import java.io.IOException;
 
 import java.text.DecimalFormat;
 
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
-
 import java.text.SimpleDateFormat;
-import java.text.DecimalFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import retrofit.RestAdapter;
@@ -106,17 +95,12 @@ import roboguice.inject.InjectView;
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsDistanceUpdatePeriod;
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsUpdatePeriod;
 
-import java.sql.*;
 import java.util.concurrent.TimeUnit;
 
-import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.Volley;
-import com.android.volley.Response.Listener;
 
 import org.json.JSONArray;
-import org.json.JSONObject;
 
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -136,7 +120,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     GnssStatus.Callback mGnssStatusCallback;
     LocationManager mLocationManager;
-    private float gravity[] = {0, 0, 0};
+    private float compass_last_measured_bearing = 0;
+    private final float SMOOTHING_FACTOR_COMPASS = 0.8F;
+    private float gravity_vec[] = {0, 0, 0};
+    private float magnetic_field_vec[] = {0, 0, 0};
     private float linear_acceleration[] = {0, 0, 0};
 
     private HashMap<String, Date> resourceNameTolastDataUpdate = new HashMap<String, Date>();
@@ -199,9 +186,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 //            gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
 //            gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
 
-            float gravity_x = gravity[0];
-            float gravity_y = gravity[1];
-            float gravity_z = gravity[2];
+            float gravity_x = gravity_vec[0];
+            float gravity_y = gravity_vec[1];
+            float gravity_z = gravity_vec[2];
             float gravity_val = (float) Math.sqrt(gravity_x * gravity_x + gravity_y * gravity_y + gravity_z * gravity_z);
 
             linear_acceleration[0] = event.values[0] - gravity_x;
@@ -265,9 +252,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     //    private TextView acceleration;
     private final SensorEventListener gravityListener = new SensorEventListener() {
         public void onSensorChanged(SensorEvent event) {
-            gravity[0] = event.values[0];
-            gravity[1] = event.values[1];
-            gravity[2] = event.values[2];
+            gravity_vec[0] = event.values[0];
+            gravity_vec[1] = event.values[1];
+            gravity_vec[2] = event.values[2];
         }
 
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
@@ -515,6 +502,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private Sensor orientSensor = null;
     private Sensor rotationSensor = null;
     private Sensor accelerationSensor = null;
+    private Sensor magneticFieldSensor = null;
     private Sensor gravitySensor = null;
     //    private Sensor headingSensor = null;
     private PowerManager.WakeLock wakeLock = null;
@@ -755,6 +743,14 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 //            showDialog(NO_GPS_SUPPORT);
         }
 
+        sensors = sensorManager.getSensorList(Sensor.TYPE_MAGNETIC_FIELD);
+        if (sensors.size() > 0)
+            magneticFieldSensor = sensors.get(0);
+        else {
+            throw new RuntimeException();
+//            showDialog(NO_GPS_SUPPORT);
+        }
+
 //        sensors = sensorManager.getSensorList(Sensor.TYPE_HEADING);
 //        if (sensors.size() > 0)
 //            headingSensor = sensors.get(0);
@@ -841,6 +837,87 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     }
 
+    private SensorEventListener magneticFieldListener = new SensorEventListener() {
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        }
+
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+
+            if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+                magnetic_field_vec = event.values.clone();
+            }
+
+            if (gravity_vec != null && magnetic_field_vec != null) {
+
+                /* Create rotation Matrix */
+                float[] rotationMatrix = new float[9];
+                if (SensorManager.getRotationMatrix(rotationMatrix, null,
+                        gravity_vec, magnetic_field_vec)) {
+
+                    /* Compensate device orientation */
+                    // http://android-developers.blogspot.de/2010/09/one-screen-turn-deserves-another.html
+                    float[] remappedRotationMatrix = new float[9];
+                    switch (getWindowManager().getDefaultDisplay()
+                            .getRotation()) {
+                        case Surface.ROTATION_0:
+                            SensorManager.remapCoordinateSystem(rotationMatrix,
+                                    SensorManager.AXIS_X, SensorManager.AXIS_Y,
+                                    remappedRotationMatrix);
+                            break;
+                        case Surface.ROTATION_90:
+                            SensorManager.remapCoordinateSystem(rotationMatrix,
+                                    SensorManager.AXIS_Y,
+                                    SensorManager.AXIS_MINUS_X,
+                                    remappedRotationMatrix);
+                            break;
+                        case Surface.ROTATION_180:
+                            SensorManager.remapCoordinateSystem(rotationMatrix,
+                                    SensorManager.AXIS_MINUS_X,
+                                    SensorManager.AXIS_MINUS_Y,
+                                    remappedRotationMatrix);
+                            break;
+                        case Surface.ROTATION_270:
+                            SensorManager.remapCoordinateSystem(rotationMatrix,
+                                    SensorManager.AXIS_MINUS_Y,
+                                    SensorManager.AXIS_X, remappedRotationMatrix);
+                            break;
+                    }
+
+                    /* Calculate Orientation */
+                    float results[] = new float[3];
+                    SensorManager.getOrientation(remappedRotationMatrix,
+                            results);
+
+                    /* Get measured value */
+                    float current_measured_bearing = (float) (results[0] * 180 / Math.PI);
+                    if (current_measured_bearing < 0) {
+                        current_measured_bearing += 360;
+                    }
+
+                    /* Smooth values using a 'Low Pass Filter' */
+                    current_measured_bearing = current_measured_bearing
+                            + SMOOTHING_FACTOR_COMPASS
+                            * (current_measured_bearing - compass_last_measured_bearing);
+
+                    /* Update normal output */
+//                    visual_compass_value.setText(String.valueOf(Math
+//                            .round(current_bearing))
+//                            + getString(R.string.degrees));
+
+                    /*
+                     * Update variables for next use (Required for Low Pass
+                     * Filter)
+                     */
+                    compass_last_measured_bearing = current_measured_bearing;
+
+                }
+            }
+        }
+    };
+
     /**
      * If lock is held, release. Lock will be held when the service is running.
      */
@@ -871,6 +948,23 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 SensorManager.SENSOR_DELAY_UI);
         wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 "obdapp:debug");
+
+        sensorManager.registerListener(magneticFieldListener, magneticFieldSensor,
+                SensorManager.SENSOR_DELAY_UI);
+        wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
+                "obdapp:debug");
+
+//        /* Initialize the magnetic field sensor */
+//        if (magneticFieldSensor != null) {
+//            Log.i(TAG, "Magnetic field sensor available. (TYPE_MAGNETIC_FIELD)");
+//            sensorManager.registerListener(magneticFieldListener,
+//                    magneticFieldSensor, SensorManager.SENSOR_DELAY_GAME);
+//        } else {
+//            Log.i(TAG,
+//                    "Magnetic field sensor unavailable. (TYPE_MAGNETIC_FIELD)");
+//            throw new RuntimeException();
+//        }
+
 
 //        sensorManager.registerListener(headingListener, headingSensor,
 //                SensorManager.SENSOR_DELAY_UI);
