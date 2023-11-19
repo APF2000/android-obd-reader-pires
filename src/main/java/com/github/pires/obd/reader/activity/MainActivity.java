@@ -680,7 +680,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 //                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
 //                    LocationManager.registerGnssStatusCallback(GnssStatus.Callback)
 //                }
-                mLocService.addGpsStatusListener(this);
+//                mLocService.addGpsStatusListener(this);
                 if (mLocService.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
 //                    gpsStatusTextView.setText(getString(R.string.status_gps_ready));
                     return true;
