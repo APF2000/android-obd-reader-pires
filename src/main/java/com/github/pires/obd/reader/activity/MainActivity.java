@@ -135,6 +135,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private float linear_acceleration[] = {0, 0, 0};
 
     private HashMap<String, Date> resourceNameTolastDataUpdate = new HashMap<String, Date>();
+    private Date lastHeadingUpdate = new Date();
     private Date lastUpdateTimeAcceleration;
     private Date lastUpdateTimeGPS;
 
@@ -270,8 +271,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
 
 
-//    @InjectView(R.id.acceleration_text)
-//    private TextView acceleration;
+    //    @InjectView(R.id.acceleration_text)
+    //    private TextView acceleration;
     private final SensorEventListener gravityListener = new SensorEventListener() {
         public void onSensorChanged(SensorEvent event) {
             gravity[0] = event.values[0];
@@ -283,6 +284,38 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             // do nothing
         }
     };
+
+//    private final SensorEventListener headingListener = new SensorEventListener() {
+//        public void onSensorChanged(SensorEvent event) {
+//            float heading = event.values[0];
+//            float accuracy = event.values[1];
+//
+//            Date currentTime = Calendar.getInstance().getTime();
+//
+//            Date lastUpdateTime = lastHeadingUpdate;
+//
+//            long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
+//            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//
+//            if (diffSeconds <= minSecondsBetweenData) return;
+//            lastHeadingUpdate = currentTime;
+//
+//            DecimalFormat df = new DecimalFormat("0.00");
+//            String heading_string = df.format(heading);
+//            String accuracy_string = df.format(accuracy);
+//
+//            JSONArray jsonContent = new JSONArray();
+//            jsonContent.put(heading_string);
+//            jsonContent.put(accuracy_string);
+//
+//            Log.d("arthur", "Getting heaing data");
+//            writeDataToFile("DELETEME_HEADING.txt", currentTime.toString() + " " + jsonContent.toString());
+//        }
+//
+//        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+//            // do nothing
+//        }
+//    };
 
 
     @InjectView(R.id.compass_text)
@@ -420,6 +453,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private Sensor orientSensor = null;
     private Sensor accelerationSensor = null;
     private Sensor gravitySensor = null;
+//    private Sensor headingSensor = null;
     private PowerManager.WakeLock wakeLock = null;
     private boolean preRequisites = true;
     private ServiceConnection serviceConn = new ServiceConnection() {
@@ -638,6 +672,14 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 //            showDialog(NO_GPS_SUPPORT);
         }
 
+//        sensors = sensorManager.getSensorList(Sensor.TYPE_HEADING);
+//        if (sensors.size() > 0)
+//            headingSensor = sensors.get(0);
+//        else {
+//            throw new RuntimeException();
+////            showDialog(NO_GPS_SUPPORT);
+//        }
+
         // create a log instance for use by this application
         triplog = TripLog.getInstance(this.getApplicationContext());
 
@@ -710,6 +752,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 SensorManager.SENSOR_DELAY_UI);
         wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 "obdapp:debug");
+
+//        sensorManager.registerListener(headingListener, headingSensor,
+//                SensorManager.SENSOR_DELAY_UI);
+//        wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
+//                "obdapp:debug");
 
         // get Bluetooth device
         final BluetoothAdapter btAdapter = BluetoothAdapter
