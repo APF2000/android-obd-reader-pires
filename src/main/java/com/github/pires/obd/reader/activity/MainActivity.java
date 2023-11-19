@@ -135,7 +135,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private float linear_acceleration[] = {0, 0, 0};
 
     private HashMap<String, Date> resourceNameTolastDataUpdate = new HashMap<String, Date>();
-    private Date lastHeadingUpdate = new Date();
+//    private Date lastHeadingUpdate = new Date();
+    private Date lastOrientUpdate = new Date();
     private Date lastUpdateTimeAcceleration;
     private Date lastUpdateTimeGPS;
 
@@ -323,26 +324,52 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private final SensorEventListener orientListener = new SensorEventListener() {
 
         public void onSensorChanged(SensorEvent event) {
-            float x = event.values[0];
+            float azimuth = event.values[0];
+            float pitch = event.values[1];
+            float roll = event.values[2];
+
             String dir = "";
-            if (x >= 337.5 || x < 22.5) {
+            if (azimuth >= 337.5 || azimuth < 22.5) {
                 dir = "N";
-            } else if (x >= 22.5 && x < 67.5) {
+            } else if (azimuth >= 22.5 && azimuth < 67.5) {
                 dir = "NE";
-            } else if (x >= 67.5 && x < 112.5) {
+            } else if (azimuth >= 67.5 && azimuth < 112.5) {
                 dir = "E";
-            } else if (x >= 112.5 && x < 157.5) {
+            } else if (azimuth >= 112.5 && azimuth < 157.5) {
                 dir = "SE";
-            } else if (x >= 157.5 && x < 202.5) {
+            } else if (azimuth >= 157.5 && azimuth < 202.5) {
                 dir = "S";
-            } else if (x >= 202.5 && x < 247.5) {
+            } else if (azimuth >= 202.5 && azimuth < 247.5) {
                 dir = "SW";
-            } else if (x >= 247.5 && x < 292.5) {
+            } else if (azimuth >= 247.5 && azimuth < 292.5) {
                 dir = "W";
-            } else if (x >= 292.5 && x < 337.5) {
+            } else if (azimuth >= 292.5 && azimuth < 337.5) {
                 dir = "NW";
             }
             updateTextView(compass, dir);
+
+            Date currentTime = Calendar.getInstance().getTime();
+
+            Date lastUpdateTime = lastOrientUpdate;
+
+            long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
+            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+
+            if (diffSeconds <= minSecondsBetweenData) return;
+            lastOrientUpdate = currentTime;
+
+            DecimalFormat df = new DecimalFormat("0.00");
+            String azimuth_string = df.format(azimuth);
+            String pitch_string = df.format(pitch);
+            String roll_string = df.format(roll);
+
+            JSONArray jsonContent = new JSONArray();
+            jsonContent.put(azimuth_string);
+            jsonContent.put(pitch_string);
+            jsonContent.put(roll_string);
+
+            Log.d("arthur", "Getting orientation data");
+            writeDataToFile("DELETEME_ORIENTATION.txt", currentTime.toString() + " " + jsonContent.toString());
         }
 
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
