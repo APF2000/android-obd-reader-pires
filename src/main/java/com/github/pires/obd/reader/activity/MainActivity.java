@@ -131,9 +131,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private Date lastOrientUpdate = new Date();
     private Date lastRotationUpdate = new Date();
     private Date lastUpdateTimeAcceleration;
-    private Date lastUpdateTimeGPS;
+    private Date lastUpdateTimeGPS = new Date();
+    private Date lastBearingUpdate = new Date();
 
-    private final long minSecondsBetweenData = 2;
+    private final long minSecondsBetweenData = 1;
     private static final String TAG = MainActivity.class.getName();
     private static final int NO_BLUETOOTH_ID = 0;
     private static final int BLUETOOTH_DISABLED = 1;
@@ -912,6 +913,31 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                      * Filter)
                      */
                     compass_last_measured_bearing = current_measured_bearing;
+
+
+                    Date currentTime = Calendar.getInstance().getTime();
+
+
+                    if (lastBearingUpdate == null) {
+                        lastBearingUpdate = new Date();
+                        lastBearingUpdate.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+                    }
+
+                    long diffInMillis = currentTime.getTime() - lastBearingUpdate.getTime();
+                    long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+
+                    if (diffSeconds <= minSecondsBetweenData) return;
+                    lastBearingUpdate = currentTime;
+
+                    DecimalFormat df = new DecimalFormat("0.00");
+                    String bearing_string = df.format(current_measured_bearing);
+
+                    JSONArray jsonContent = new JSONArray();
+                    jsonContent.put(bearing_string);
+
+                    String contentString = jsonContent.toString();
+                    Log.d(TAG, "obd.pires.data: Getting bearing data: " + contentString);
+                    writeDataToFile("DELETEME_BEARING.txt", currentTime.toString() + " " + contentString);
 
                 }
             }
