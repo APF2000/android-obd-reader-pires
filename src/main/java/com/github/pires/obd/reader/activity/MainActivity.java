@@ -131,11 +131,14 @@ import com.google.android.gms.location.SettingsClient;
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
+    private float gravity[] = {0, 0, 0};
+    private float linear_acceleration[] = {0, 0, 0};
+
     private HashMap<String, Date> resourceNameTolastDataUpdate = new HashMap<String, Date>();
     private Date lastUpdateTimeAcceleration;
     private Date lastUpdateTimeGPS;
 
-    private final long minSecondsBetweenData = 10;
+    private final long minSecondsBetweenData = 2;
     private static final String TAG = MainActivity.class.getName();
     private static final int NO_BLUETOOTH_ID = 0;
     private static final int BLUETOOTH_DISABLED = 1;
@@ -199,30 +202,41 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             // alpha is calculated as t / (t + dT)
             // with t, the low-pass filter's time-constant
             // and dT, the event delivery rate
-            // final float alpha = 0.8;
+            final float alpha = 0.8F;
 //            gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
 //            gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
 //            gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
-//            linear_acceleration[0] = event.values[0] - gravity[0];
-//            linear_acceleration[1] = event.values[1] - gravity[1];
-//            linear_acceleration[2] = event.values[2] - gravity[2];
 
+            float gravity_x = gravity[0];
+            float gravity_y = gravity[1];
+            float gravity_z = gravity[2];
 
-            float x = event.values[0];
-            float y = event.values[1];
-            float z = event.values[2];
+            linear_acceleration[0] = event.values[0] - gravity_x;
+            linear_acceleration[1] = event.values[1] - gravity_y;
+            linear_acceleration[2] = event.values[2] - gravity_z;
+
+            float x = linear_acceleration[0];
+            float y = linear_acceleration[1];
+            float z = linear_acceleration[2];
             DecimalFormat df = new DecimalFormat("0.00");
-            String acc_x = df.format(x);
-            String acc_y = df.format(y);
-            String acc_z = df.format(z);
+            String acc_x_string = df.format(x);
+            String acc_y_string = df.format(y);
+            String acc_z_string = df.format(z);
+
+            String gravity_x_string = df.format(gravity_x);
+            String gravity_y_string = df.format(gravity_y);
+            String gravity_z_string = df.format(gravity_z);
 
             JSONArray jsonAcceleration = new JSONArray();
-            jsonAcceleration.put(acc_x);
-            jsonAcceleration.put(acc_y);
-            jsonAcceleration.put(acc_z);
+            jsonAcceleration.put(acc_x_string);
+            jsonAcceleration.put(acc_y_string);
+            jsonAcceleration.put(acc_z_string);
+
+            jsonAcceleration.put(gravity_x_string);
+            jsonAcceleration.put(gravity_y_string);
+            jsonAcceleration.put(gravity_z_string);
 
             Date currentTime = Calendar.getInstance().getTime();
-
 
             if (lastUpdateTimeAcceleration == null) {
                 lastUpdateTimeAcceleration = new Date();
@@ -237,10 +251,27 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
             String accelerationString = jsonAcceleration.toString();
             Log.d("arthur", "Getting acceleration data: " + accelerationString);
-            writeDataToFile("DELETEME_ACCELERATION.txt", currentTime.toString() + " " + accelerationString);
+            writeDataToFile("DELETEME_ACCELERATION.txt",
+                    currentTime.toString() + " " + accelerationString);
 
             //updateTextView(acceleration, acc);
 
+        }
+
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            // do nothing
+        }
+    };
+
+
+
+//    @InjectView(R.id.acceleration_text)
+//    private TextView acceleration;
+    private final SensorEventListener gravityListener = new SensorEventListener() {
+        public void onSensorChanged(SensorEvent event) {
+            gravity[0] = event.values[0];
+            gravity[1] = event.values[1];
+            gravity[2] = event.values[2];
         }
 
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
@@ -383,6 +414,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     };
     private Sensor orientSensor = null;
     private Sensor accelerationSensor = null;
+    private Sensor gravitySensor = null;
     private PowerManager.WakeLock wakeLock = null;
     private boolean preRequisites = true;
     private ServiceConnection serviceConn = new ServiceConnection() {
@@ -593,6 +625,14 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         else
             showDialog(NO_GPS_SUPPORT);
 
+        sensors = sensorManager.getSensorList(Sensor.TYPE_GRAVITY);
+        if (sensors.size() > 0)
+            gravitySensor = sensors.get(0);
+        else {
+            throw new RuntimeException();
+//            showDialog(NO_GPS_SUPPORT);
+        }
+
         // create a log instance for use by this application
         triplog = TripLog.getInstance(this.getApplicationContext());
 
@@ -657,6 +697,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 "obdapp:debug");
 
         sensorManager.registerListener(accelerationListener, accelerationSensor,
+                SensorManager.SENSOR_DELAY_UI);
+        wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
+                "obdapp:debug");
+
+        sensorManager.registerListener(gravityListener, gravitySensor,
                 SensorManager.SENSOR_DELAY_UI);
         wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 "obdapp:debug");
