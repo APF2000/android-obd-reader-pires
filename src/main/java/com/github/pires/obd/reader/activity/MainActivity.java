@@ -210,6 +210,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             float gravity_x = gravity[0];
             float gravity_y = gravity[1];
             float gravity_z = gravity[2];
+            float gravity_val = (float) Math.sqrt(gravity_x * gravity_x + gravity_y * gravity_y + gravity_z * gravity_z);
 
             linear_acceleration[0] = event.values[0] - gravity_x;
             linear_acceleration[1] = event.values[1] - gravity_y;
@@ -227,6 +228,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             String gravity_y_string = df.format(gravity_y);
             String gravity_z_string = df.format(gravity_z);
 
+            String gravity_val_string = df.format(gravity_val);
+
             JSONArray jsonAcceleration = new JSONArray();
             jsonAcceleration.put(acc_x_string);
             jsonAcceleration.put(acc_y_string);
@@ -235,6 +238,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             jsonAcceleration.put(gravity_x_string);
             jsonAcceleration.put(gravity_y_string);
             jsonAcceleration.put(gravity_z_string);
+
+            jsonAcceleration.put(gravity_val_string);
 
             Date currentTime = Calendar.getInstance().getTime();
 
