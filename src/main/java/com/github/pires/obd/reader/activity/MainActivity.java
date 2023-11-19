@@ -137,6 +137,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private HashMap<String, Date> resourceNameTolastDataUpdate = new HashMap<String, Date>();
 //    private Date lastHeadingUpdate = new Date();
     private Date lastOrientUpdate = new Date();
+    private Date lastRotationUpdate = new Date();
     private Date lastUpdateTimeAcceleration;
     private Date lastUpdateTimeGPS;
 
@@ -377,6 +378,52 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     };
 
+    private final SensorEventListener rotationListener = new SensorEventListener() {
+
+        public void onSensorChanged(SensorEvent event) {
+//            float x_sin = event.values[0]; // east
+//            float y_sin = event.values[1]; // north
+//            float z_sin = event.values[2]; // sky
+//            float cos_theta = event.values[3];
+//            float heading_accuracy = event.values[4];
+//
+//            float xyz_norm = (float) Math.sqrt(x_sin * x_sin + y_sin * y_sin + z_sin * z_sin);
+//
+//            float normal_x = x_sin / xyz_norm;
+//            float normal_y = y_sin / xyz_norm;
+//            float normal_z = z_sin / xyz_norm;
+//
+//            float sin_theta = (float) Math.sqrt(1 - cos_theta * cos_theta);
+//
+//            Date currentTime = Calendar.getInstance().getTime();
+//
+//            Date lastUpdateTime = lastRotationUpdate;
+//
+//            long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
+//            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//
+//            if (diffSeconds <= minSecondsBetweenData) return;
+//            lastRotationUpdate = currentTime;
+//
+//            DecimalFormat df = new DecimalFormat("0.00");
+////            String azimuth_string = df.format(azimuth);
+////            String pitch_string = df.format(pitch);
+////            String roll_string = df.format(roll);
+//
+//            JSONArray jsonContent = new JSONArray();
+////            jsonContent.put(azimuth_string);
+////            jsonContent.put(pitch_string);
+////            jsonContent.put(roll_string);
+//
+//            Log.d("arthur", "Getting rotation data");
+//            writeDataToFile("DELETEME_ROTATION.txt", currentTime.toString() + " " + jsonContent.toString());
+        }
+
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            // do nothing
+        }
+    };
+
 //    @InjectView(R.id.acceleration_text)
 //    private TextView acceleration;
 //    private final SensorEventListener accelerationListener = new SensorEventListener() {
@@ -478,6 +525,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     };
     private Sensor orientSensor = null;
+    private Sensor rotationSensor = null;
     private Sensor accelerationSensor = null;
     private Sensor gravitySensor = null;
 //    private Sensor headingSensor = null;
@@ -594,6 +642,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     }
 
+    @SuppressLint("NewApi")
     private void writeDataToFile(String fileName, String content)  {
 
         if (!Environment.isExternalStorageManager()){
@@ -685,6 +734,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         else
             showDialog(NO_ORIENTATION_SENSOR);
 
+        sensors = sensorManager.getSensorList(Sensor.TYPE_ROTATION_VECTOR);
+        if (sensors.size() > 0)
+            rotationSensor = sensors.get(0);
+        else {
+            throw new RuntimeException();
+        }
+
         sensors = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER);
         if (sensors.size() > 0)
             accelerationSensor = sensors.get(0);
@@ -766,6 +822,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         super.onResume();
         Log.d(TAG, "Resuming..");
         sensorManager.registerListener(orientListener, orientSensor,
+                SensorManager.SENSOR_DELAY_UI);
+        wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
+                "obdapp:debug");
+
+        sensorManager.registerListener(rotationListener, rotationSensor,
                 SensorManager.SENSOR_DELAY_UI);
         wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 "obdapp:debug");

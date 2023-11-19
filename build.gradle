@@ -22,11 +22,11 @@ repositories {
 }
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 33
     // android.buildToolsVersion "30.0.3"
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 30
+        targetSdkVersion 33
         applicationId 'com.github.pires.obd.reader'
     }
 
@@ -37,7 +37,7 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    buildToolsVersion '30.0.3'
+//    buildToolsVersion '30.0.3'
     namespace 'com.github.pires.obd.reader'
     lint {
         abortOnError false
