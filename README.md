@@ -27,7 +27,7 @@ The latest release can be found [here](https://github.com/pires/android-obd-read
 ## Prerequisites ##
 - JDK 8
 - Android Studio 1.5.x or newer
-- Android SDK (API 22, Build tools 23.0.1)
+- Android SDK (API 22, Build tools 30.0.3)
 - [OBD Java API](https://github.com/pires/obd-java-api/) (already included)
 
 ## Test with device ##

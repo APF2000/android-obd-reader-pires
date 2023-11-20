@@ -1,5 +1,7 @@
 package com.github.pires.obd.reader.activity;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -10,6 +12,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -19,15 +22,20 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.location.LocationProvider;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Surface;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
@@ -36,6 +44,14 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+<<<<<<< HEAD
+import androidx.appcompat.widget.Toolbar;
+=======
+>>>>>>> 64aa104 (get magnetic field for bearing)
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.github.pires.obd.commands.ObdCommand;
 import com.github.pires.obd.commands.SpeedCommand;
@@ -56,9 +72,15 @@ import com.github.pires.obd.reader.trips.TripLog;
 import com.github.pires.obd.reader.trips.TripRecord;
 import com.google.inject.Inject;
 
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+
+import java.text.DecimalFormat;
+
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -75,11 +97,49 @@ import roboguice.inject.InjectView;
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsDistanceUpdatePeriod;
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsUpdatePeriod;
 
+import java.util.concurrent.TimeUnit;
+
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.Volley;
+
+import org.json.JSONArray;
+
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationAvailability;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.SettingsClient;
+
+
 // Some code taken from https://github.com/barbeau/gpstest
 
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
+<<<<<<< HEAD
+    private float gravity[] = {0, 0, 0};
+=======
+    GnssStatus.Callback mGnssStatusCallback;
+    LocationManager mLocationManager;
+    private float compass_last_measured_bearing = 0;
+    private final float SMOOTHING_FACTOR_COMPASS = 0.8F;
+    private float gravity_vec[] = {0, 0, 0};
+    private float magnetic_field_vec[] = {0, 0, 0};
+>>>>>>> 64aa104 (get magnetic field for bearing)
+    private float linear_acceleration[] = {0, 0, 0};
+
+    private HashMap<String, Date> resourceNameTolastDataUpdate = new HashMap<String, Date>();
+//    private Date lastHeadingUpdate = new Date();
+    private Date lastOrientUpdate = new Date();
+    private Date lastUpdateTimeAcceleration;
+    private Date lastUpdateTimeGPS = new Date();
+    private Date lastBearingUpdate = new Date();
+
+    private final long minSecondsBetweenData = 1;
     private static final String TAG = MainActivity.class.getName();
     private static final int NO_BLUETOOTH_ID = 0;
     private static final int BLUETOOTH_DISABLED = 1;
@@ -95,6 +155,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private static final int REQUEST_ENABLE_BT = 1234;
     private static boolean bluetoothDefaultIsEnable = false;
 
+    RequestQueue queue;
+
     static {
         RoboGuice.setUseAnnotationDatabases(false);
     }
@@ -109,37 +171,248 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private TripLog triplog;
     private TripRecord currentTrip;
 
-    @InjectView(R.id.compass_text)
-    private TextView compass;
-    private final SensorEventListener orientListener = new SensorEventListener() {
+    private int FASTEST_INTERVAL = 8 * 1000; // 8 SECOND
+    private int UPDATE_INTERVAL = 2000; // 2 SECOND
+    private int FINE_LOCATION_REQUEST = 888;
+    private Toast toast;
+    private LocationRequest locationRequest;
 
+    private TextView tvLocationDetails;
+    private LinearLayout mainLayout;
+
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.d(TAG, "Entered onStart...");
+
+        ActivityCompat.requestPermissions( this,    new String[]{
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.MANAGE_EXTERNAL_STORAGE
+                }, 1
+        );
+
+        queue = Volley.newRequestQueue(this);
+    }
+
+
+    @InjectView(R.id.acceleration_text)
+    private TextView acceleration;
+    private final SensorEventListener accelerationListener = new SensorEventListener() {
         public void onSensorChanged(SensorEvent event) {
-            float x = event.values[0];
-            String dir = "";
-            if (x >= 337.5 || x < 22.5) {
-                dir = "N";
-            } else if (x >= 22.5 && x < 67.5) {
-                dir = "NE";
-            } else if (x >= 67.5 && x < 112.5) {
-                dir = "E";
-            } else if (x >= 112.5 && x < 157.5) {
-                dir = "SE";
-            } else if (x >= 157.5 && x < 202.5) {
-                dir = "S";
-            } else if (x >= 202.5 && x < 247.5) {
-                dir = "SW";
-            } else if (x >= 247.5 && x < 292.5) {
-                dir = "W";
-            } else if (x >= 292.5 && x < 337.5) {
-                dir = "NW";
+            // alpha is calculated as t / (t + dT)
+            // with t, the low-pass filter's time-constant
+            // and dT, the event delivery rate
+            final float alpha = 0.8F;
+//            gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
+//            gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
+//            gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
+
+            float gravity_x = gravity_vec[0];
+            float gravity_y = gravity_vec[1];
+            float gravity_z = gravity_vec[2];
+            float gravity_val = (float) Math.sqrt(gravity_x * gravity_x + gravity_y * gravity_y + gravity_z * gravity_z);
+
+            linear_acceleration[0] = event.values[0] - gravity_x;
+            linear_acceleration[1] = event.values[1] - gravity_y;
+            linear_acceleration[2] = event.values[2] - gravity_z;
+
+            float x = linear_acceleration[0];
+            float y = linear_acceleration[1];
+            float z = linear_acceleration[2];
+            DecimalFormat df = new DecimalFormat("0.00");
+            String acc_x_string = df.format(x);
+            String acc_y_string = df.format(y);
+            String acc_z_string = df.format(z);
+
+            String gravity_x_string = df.format(gravity_x);
+            String gravity_y_string = df.format(gravity_y);
+            String gravity_z_string = df.format(gravity_z);
+
+            String gravity_val_string = df.format(gravity_val);
+
+            JSONArray jsonAcceleration = new JSONArray();
+            jsonAcceleration.put(acc_x_string);
+            jsonAcceleration.put(acc_y_string);
+            jsonAcceleration.put(acc_z_string);
+
+            jsonAcceleration.put(gravity_x_string);
+            jsonAcceleration.put(gravity_y_string);
+            jsonAcceleration.put(gravity_z_string);
+
+            jsonAcceleration.put(gravity_val_string);
+
+            Date currentTime = Calendar.getInstance().getTime();
+
+            if (lastUpdateTimeAcceleration == null) {
+                lastUpdateTimeAcceleration = new Date();
+                lastUpdateTimeAcceleration.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
             }
-            updateTextView(compass, dir);
+
+            long diffInMillis = currentTime.getTime() - lastUpdateTimeAcceleration.getTime();
+            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+
+            if (diffSeconds <= minSecondsBetweenData) return;
+            lastUpdateTimeAcceleration = currentTime;
+
+            String accelerationString = jsonAcceleration.toString();
+            Log.d("arthur", "Getting acceleration data: " + accelerationString);
+            writeDataToFile("DELETEME_ACCELERATION.txt",
+                    currentTime.toString() + " " + accelerationString);
+
+            //updateTextView(acceleration, acc);
+
         }
 
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
             // do nothing
         }
     };
+
+
+
+    //    @InjectView(R.id.acceleration_text)
+    //    private TextView acceleration;
+    private final SensorEventListener gravityListener = new SensorEventListener() {
+        public void onSensorChanged(SensorEvent event) {
+            gravity_vec[0] = event.values[0];
+            gravity_vec[1] = event.values[1];
+            gravity_vec[2] = event.values[2];
+        }
+
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            // do nothing
+        }
+    };
+
+//    private final SensorEventListener headingListener = new SensorEventListener() {
+//        public void onSensorChanged(SensorEvent event) {
+//            float heading = event.values[0];
+//            float accuracy = event.values[1];
+//
+//            Date currentTime = Calendar.getInstance().getTime();
+//
+//            Date lastUpdateTime = lastHeadingUpdate;
+//
+//            long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
+//            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//
+//            if (diffSeconds <= minSecondsBetweenData) return;
+//            lastHeadingUpdate = currentTime;
+//
+//            DecimalFormat df = new DecimalFormat("0.00");
+//            String heading_string = df.format(heading);
+//            String accuracy_string = df.format(accuracy);
+//
+//            JSONArray jsonContent = new JSONArray();
+//            jsonContent.put(heading_string);
+//            jsonContent.put(accuracy_string);
+//
+//            Log.d("arthur", "Getting heaing data");
+//            writeDataToFile("DELETEME_HEADING.txt", currentTime.toString() + " " + jsonContent.toString());
+//        }
+//
+//        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+//            // do nothing
+//        }
+//    };
+
+
+    @InjectView(R.id.compass_text)
+    private TextView compass;
+    private final SensorEventListener orientListener = new SensorEventListener() {
+
+        public void onSensorChanged(SensorEvent event) {
+            float azimuth = event.values[0];
+            float pitch = event.values[1];
+            float roll = event.values[2];
+
+            String dir = "";
+            if (azimuth >= 337.5 || azimuth < 22.5) {
+                dir = "N";
+            } else if (azimuth >= 22.5 && azimuth < 67.5) {
+                dir = "NE";
+            } else if (azimuth >= 67.5 && azimuth < 112.5) {
+                dir = "E";
+            } else if (azimuth >= 112.5 && azimuth < 157.5) {
+                dir = "SE";
+            } else if (azimuth >= 157.5 && azimuth < 202.5) {
+                dir = "S";
+            } else if (azimuth >= 202.5 && azimuth < 247.5) {
+                dir = "SW";
+            } else if (azimuth >= 247.5 && azimuth < 292.5) {
+                dir = "W";
+            } else if (azimuth >= 292.5 && azimuth < 337.5) {
+                dir = "NW";
+            }
+            updateTextView(compass, dir);
+
+            Date currentTime = Calendar.getInstance().getTime();
+
+            Date lastUpdateTime = lastOrientUpdate;
+
+            long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
+            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+
+            if (diffSeconds <= minSecondsBetweenData) return;
+            lastOrientUpdate = currentTime;
+
+            DecimalFormat df = new DecimalFormat("0.00");
+            String azimuth_string = df.format(azimuth);
+            String pitch_string = df.format(pitch);
+            String roll_string = df.format(roll);
+
+            JSONArray jsonContent = new JSONArray();
+            jsonContent.put(azimuth_string);
+            jsonContent.put(pitch_string);
+            jsonContent.put(roll_string);
+
+            Log.d("arthur", "Getting orientation data");
+            writeDataToFile("DELETEME_ORIENTATION.txt", currentTime.toString() + " " + jsonContent.toString());
+        }
+
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            // do nothing
+        }
+    };
+
+//    @InjectView(R.id.acceleration_text)
+//    private TextView acceleration;
+//    private final SensorEventListener accelerationListener = new SensorEventListener() {
+//        public void onSensorChanged(SensorEvent event) {
+//            /*
+//            // alpha is calculated as t / (t + dT)
+//            // with t, the low-pass filter's time-constant
+//            // and dT, the event delivery rate
+//
+//            final float alpha = 0.8;
+//
+//            gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
+//            gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
+//            gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
+//
+//            linear_acceleration[0] = event.values[0] - gravity[0];
+//            linear_acceleration[1] = event.values[1] - gravity[1];
+//            linear_acceleration[2] = event.values[2] - gravity[2];
+//        }
+//
+//*/
+//            float x = event.values[0];
+//            float y = event.values[1];
+//            float z = event.values[2];
+//
+//            DecimalFormat df = new DecimalFormat("#0.0");
+//            String acc = df.format(x);
+//
+//            updateTextView(acceleration, acc);
+//
+//        }
+//        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+//            // do nothing
+//        }
+//    };
+
+
     @InjectView(R.id.BT_STATUS)
     private TextView btStatusTextView;
     @InjectView(R.id.OBD_STATUS)
@@ -182,7 +455,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     gpsStatusTextView.setText(sb.toString());
                 }
                 if (prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, false)) {
-                    // Upload the current reading by http
+                    // UplFoad the current reading by http
                     final String vin = prefs.getString(ConfigActivity.VEHICLE_ID_KEY, "UNDEFINED_VIN");
                     Map<String, String> temp = new HashMap<String, String>();
                     temp.putAll(commandResult);
@@ -195,7 +468,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     Map<String, String> temp = new HashMap<String, String>();
                     temp.putAll(commandResult);
                     ObdReading reading = new ObdReading(lat, lon, alt, System.currentTimeMillis(), vin, temp);
-                    if(reading != null) myCSVWriter.writeLineCSV(reading);
+                    if (reading != null) myCSVWriter.writeLineCSV(reading);
                 }
                 commandResult.clear();
             }
@@ -204,6 +477,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     };
     private Sensor orientSensor = null;
+    private Sensor accelerationSensor = null;
+    private Sensor magneticFieldSensor = null;
+    private Sensor gravitySensor = null;
+//    private Sensor headingSensor = null;
     private PowerManager.WakeLock wakeLock = null;
     private boolean preRequisites = true;
     private ServiceConnection serviceConn = new ServiceConnection() {
@@ -255,10 +532,15 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         });
     }
 
+    void foo() {
+        Log.d("arthur", "request worked");
+    }
+
     public void stateUpdate(final ObdCommandJob job) {
         final String cmdName = job.getCommand().getName();
         String cmdResult = "";
         final String cmdID = LookUpCommand(cmdName);
+
 
         if (job.getState().equals(ObdCommandJob.ObdCommandJobState.EXECUTION_ERROR)) {
             cmdResult = job.getCommand().getResult();
@@ -272,7 +554,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             cmdResult = getString(R.string.status_obd_no_support);
         } else {
             cmdResult = job.getCommand().getFormattedResult();
-            if(isServiceBound)
+            if (isServiceBound)
                 obdStatusTextView.setText(getString(R.string.status_obd_data));
         }
 
@@ -282,6 +564,64 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         } else addTableRow(cmdID, cmdName, cmdResult);
         commandResult.put(cmdID, cmdResult);
         updateTripStatistic(job, cmdID);
+
+
+//        String[] listData = new String[]{cmdID, cmdName, cmdResult};
+//        String wholeData = TextUtils.join(" ", listData);
+        Date currentTime = Calendar.getInstance().getTime();
+
+        Date lastUpdateTime = resourceNameTolastDataUpdate.get(cmdName);
+        if (lastUpdateTime == null) {
+            lastUpdateTime = new Date();
+            lastUpdateTime.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+        }
+
+        long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
+        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+
+        if (diffSeconds <= minSecondsBetweenData) return;
+        resourceNameTolastDataUpdate.put(cmdName, currentTime);
+
+        // https://stackoverflow.com/questions/10717838/how-to-create-json-format-data-in-android
+        JSONArray jsonContent = new JSONArray();
+        jsonContent.put(cmdID);
+        jsonContent.put(cmdName);
+        jsonContent.put(cmdResult);
+
+
+        Log.d("arthur", "Getting data from OBD");
+        writeDataToFile("DELETEME.txt", currentTime.toString() + " " + jsonContent.toString());
+
+    }
+
+    private void writeDataToFile(String fileName, String content)  {
+
+        if (!Environment.isExternalStorageManager()){
+            Intent intent = new Intent();
+            intent.setAction(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+            Uri uri = Uri.fromParts("package", this.getPackageName(), null);
+            intent.setData(uri);
+            startActivity(intent);
+        }
+
+        File path = Environment.getExternalStorageDirectory();
+        File file = new File(path, fileName);
+
+        content += "\n";
+
+        if (!path.exists()) {
+            path.mkdirs();
+        }
+
+        try {
+            // append to file
+            FileOutputStream writer = new FileOutputStream(file, true);
+            writer.write(content.getBytes());
+            writer.close();
+        }catch(IOException e){
+            throw new RuntimeException(e);
+        }
+
     }
 
     private boolean gpsInit() {
@@ -289,9 +629,19 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         if (mLocService != null) {
             mLocProvider = mLocService.getProvider(LocationManager.GPS_PROVIDER);
             if (mLocProvider != null) {
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    // TODO: Consider calling
+                    //    ActivityCompat#requestPermissions
+                    // here to request the missing permissions, and then overriding
+                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                    //                                          int[] grantResults)
+                    // to handle the case where the user grants the permission. See the documentation
+                    // for ActivityCompat#requestPermissions for more details.
+                    return false;
+                }
                 mLocService.addGpsStatusListener(this);
                 if (mLocService.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                    gpsStatusTextView.setText(getString(R.string.status_gps_ready));
+//                    gpsStatusTextView.setText(getString(R.string.status_gps_ready));
                     return true;
                 }
             }
@@ -327,6 +677,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         if (btAdapter != null)
             bluetoothDefaultIsEnable = btAdapter.isEnabled();
 
+
         // get Orientation sensor
         List<Sensor> sensors = sensorManager.getSensorList(Sensor.TYPE_ORIENTATION);
         if (sensors.size() > 0)
@@ -334,17 +685,50 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         else
             showDialog(NO_ORIENTATION_SENSOR);
 
+        sensors = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER);
+        if (sensors.size() > 0)
+            accelerationSensor = sensors.get(0);
+        else
+            showDialog(NO_GPS_SUPPORT);
+
+        sensors = sensorManager.getSensorList(Sensor.TYPE_GRAVITY);
+        if (sensors.size() > 0)
+            gravitySensor = sensors.get(0);
+        else {
+            throw new RuntimeException();
+//            showDialog(NO_GPS_SUPPORT);
+        }
+
+        sensors = sensorManager.getSensorList(Sensor.TYPE_MAGNETIC_FIELD);
+        if (sensors.size() > 0)
+            magneticFieldSensor = sensors.get(0);
+        else {
+            throw new RuntimeException();
+//            showDialog(NO_GPS_SUPPORT);
+        }
+
+//        sensors = sensorManager.getSensorList(Sensor.TYPE_HEADING);
+//        if (sensors.size() > 0)
+//            headingSensor = sensors.get(0);
+//        else {
+//            throw new RuntimeException();
+////            showDialog(NO_GPS_SUPPORT);
+//        }
+
         // create a log instance for use by this application
         triplog = TripLog.getInstance(this.getApplicationContext());
-        
+
         obdStatusTextView.setText(getString(R.string.status_obd_disconnected));
+
+//        setContentView(R.layout.activity_main);
+//        Toolbar toolbar = findViewById(R.id.toolbar);
+//        setSupportActionBar(toolbar);
+        initViewsAndListener();
+        if (checkPermissions()) {
+            initLocationUpdate();
+        }
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        Log.d(TAG, "Entered onStart...");
-    }
 
     @Override
     protected void onDestroy() {
@@ -372,7 +756,117 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         super.onPause();
         Log.d(TAG, "Pausing..");
         releaseWakeLockIfHeld();
+
+        if (toast != null) {
+            toast.cancel();
+        }
     }
+
+    private SensorEventListener magneticFieldListener = new SensorEventListener() {
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        }
+
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+
+            if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+                magnetic_field_vec = event.values.clone();
+            }
+
+            if (gravity_vec != null && magnetic_field_vec != null) {
+
+                /* Create rotation Matrix */
+                float[] rotationMatrix = new float[9];
+                if (SensorManager.getRotationMatrix(rotationMatrix, null,
+                        gravity_vec, magnetic_field_vec)) {
+
+                    /* Compensate device orientation */
+                    // http://android-developers.blogspot.de/2010/09/one-screen-turn-deserves-another.html
+                    float[] remappedRotationMatrix = new float[9];
+                    switch (getWindowManager().getDefaultDisplay()
+                            .getRotation()) {
+                        case Surface.ROTATION_0:
+                            SensorManager.remapCoordinateSystem(rotationMatrix,
+                                    SensorManager.AXIS_X, SensorManager.AXIS_Y,
+                                    remappedRotationMatrix);
+                            break;
+                        case Surface.ROTATION_90:
+                            SensorManager.remapCoordinateSystem(rotationMatrix,
+                                    SensorManager.AXIS_Y,
+                                    SensorManager.AXIS_MINUS_X,
+                                    remappedRotationMatrix);
+                            break;
+                        case Surface.ROTATION_180:
+                            SensorManager.remapCoordinateSystem(rotationMatrix,
+                                    SensorManager.AXIS_MINUS_X,
+                                    SensorManager.AXIS_MINUS_Y,
+                                    remappedRotationMatrix);
+                            break;
+                        case Surface.ROTATION_270:
+                            SensorManager.remapCoordinateSystem(rotationMatrix,
+                                    SensorManager.AXIS_MINUS_Y,
+                                    SensorManager.AXIS_X, remappedRotationMatrix);
+                            break;
+                    }
+
+                    /* Calculate Orientation */
+                    float results[] = new float[3];
+                    SensorManager.getOrientation(remappedRotationMatrix,
+                            results);
+
+                    /* Get measured value */
+                    float current_measured_bearing = (float) (results[0] * 180 / Math.PI);
+                    if (current_measured_bearing < 0) {
+                        current_measured_bearing += 360;
+                    }
+
+                    /* Smooth values using a 'Low Pass Filter' */
+                    current_measured_bearing = current_measured_bearing
+                            + SMOOTHING_FACTOR_COMPASS
+                            * (current_measured_bearing - compass_last_measured_bearing);
+
+                    /* Update normal output */
+//                    visual_compass_value.setText(String.valueOf(Math
+//                            .round(current_bearing))
+//                            + getString(R.string.degrees));
+
+                    /*
+                     * Update variables for next use (Required for Low Pass
+                     * Filter)
+                     */
+                    compass_last_measured_bearing = current_measured_bearing;
+
+
+                    Date currentTime = Calendar.getInstance().getTime();
+
+
+                    if (lastBearingUpdate == null) {
+                        lastBearingUpdate = new Date();
+                        lastBearingUpdate.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+                    }
+
+                    long diffInMillis = currentTime.getTime() - lastBearingUpdate.getTime();
+                    long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+
+                    if (diffSeconds <= minSecondsBetweenData) return;
+                    lastBearingUpdate = currentTime;
+
+                    DecimalFormat df = new DecimalFormat("0.00");
+                    String bearing_string = df.format(current_measured_bearing);
+
+                    JSONArray jsonContent = new JSONArray();
+                    jsonContent.put(bearing_string);
+
+                    String contentString = jsonContent.toString();
+                    Log.d(TAG, "obd.pires.data: Getting bearing data: " + contentString);
+                    writeDataToFile("DELETEME_BEARING.txt", currentTime.toString() + " " + contentString);
+
+                }
+            }
+        }
+    };
 
     /**
      * If lock is held, release. Lock will be held when the service is running.
@@ -388,7 +882,39 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         sensorManager.registerListener(orientListener, orientSensor,
                 SensorManager.SENSOR_DELAY_UI);
         wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
-                "ObdReader");
+                "obdapp:debug");
+
+        sensorManager.registerListener(accelerationListener, accelerationSensor,
+                SensorManager.SENSOR_DELAY_UI);
+        wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
+                "obdapp:debug");
+
+        sensorManager.registerListener(gravityListener, gravitySensor,
+                SensorManager.SENSOR_DELAY_UI);
+        wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
+                "obdapp:debug");
+
+        sensorManager.registerListener(magneticFieldListener, magneticFieldSensor,
+                SensorManager.SENSOR_DELAY_UI);
+        wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
+                "obdapp:debug");
+
+//        /* Initialize the magnetic field sensor */
+//        if (magneticFieldSensor != null) {
+//            Log.i(TAG, "Magnetic field sensor available. (TYPE_MAGNETIC_FIELD)");
+//            sensorManager.registerListener(magneticFieldListener,
+//                    magneticFieldSensor, SensorManager.SENSOR_DELAY_GAME);
+//        } else {
+//            Log.i(TAG,
+//                    "Magnetic field sensor unavailable. (TYPE_MAGNETIC_FIELD)");
+//            throw new RuntimeException();
+//        }
+
+
+//        sensorManager.registerListener(headingListener, headingSensor,
+//                SensorManager.SENSOR_DELAY_UI);
+//        wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
+//                "obdapp:debug");
 
         // get Bluetooth device
         final BluetoothAdapter btAdapter = BluetoothAdapter
@@ -634,10 +1160,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     }
 
-    public void onLocationChanged(Location location) {
-        mLastLocation = location;
-    }
-
     public void onStatusChanged(String provider, int status, Bundle extras) {
     }
 
@@ -721,5 +1243,153 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             return null;
         }
 
+    }
+
+    private void initViewsAndListener() {
+        toast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
+//        tvLocationDetails=findViewById(R.id.tvLocationDetails);
+//        mainLayout=findViewById(R.id.mainLayout);
+//        findViewById(R.id.btnGetLocation).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                if (checkPermissions()) {
+//                    initLocationUpdate();
+//                }
+//            }
+//        });
+    }
+
+    @SuppressLint("MissingPermission")
+    //Start Location update as define intervals
+    private void initLocationUpdate() {
+
+        // Check API revision for New Location Update
+        //https://developers.google.com/android/guides/releases#june_2017_-_version_110
+
+        //init location request to start retrieving location update
+        locationRequest = new LocationRequest();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval( UPDATE_INTERVAL);
+        locationRequest.setFastestInterval(FASTEST_INTERVAL);
+
+        //Create LocationSettingRequest object using locationRequest
+        LocationSettingsRequest.Builder locationSettingBuilder =new LocationSettingsRequest.Builder();
+        locationSettingBuilder.addLocationRequest(locationRequest);
+        LocationSettingsRequest locationSetting = locationSettingBuilder.build();
+
+        //Need to check whether location settings are satisfied
+        SettingsClient settingsClient= LocationServices.getSettingsClient(this);
+        settingsClient.checkLocationSettings(locationSetting);
+        //More info :  // https://developers.google.com/android/reference/com/google/android/gms/location/SettingsClient
+
+
+        // new Google API SDK v11 uses getFusedLocationProviderClient(this)
+        FusedLocationProviderClient fusedLocationProviderClient= LocationServices.getFusedLocationProviderClient(this);
+        fusedLocationProviderClient.requestLocationUpdates(locationRequest, new LocationCallback(){
+
+                    @Override
+                    public void onLocationResult(LocationResult locationResult) {
+                        //super.onLocationResult(locationResult);
+                        if (locationResult != null) {
+                            onLocationChanged(locationResult.getLastLocation());
+                        }
+                    }
+
+                    @Override
+                    public void onLocationAvailability(LocationAvailability locationAvailability) {
+                        super.onLocationAvailability(locationAvailability);
+                    }
+                },
+                Looper.myLooper());
+
+    }
+    public void onLocationChanged(Location location) {
+        mLastLocation = location;
+
+        String latitude = Double.toString(location.getLatitude());
+        String longitude = Double.toString(location.getLongitude());
+
+        // New location has now been determined
+        String msg = "obd.pires.data: Updated Location: " + latitude + "," + longitude;
+        Log.i(TAG, msg);
+        //tvLocationDetails.setText(msg);
+        //toast.setText(msg);
+        //toast.show();
+
+        Date currentTime = Calendar.getInstance().getTime();
+
+
+        if (lastUpdateTimeGPS == null) {
+            lastUpdateTimeGPS = new Date();
+            lastUpdateTimeGPS.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+        }
+
+        long diffInMillis = currentTime.getTime() - lastUpdateTimeGPS.getTime();
+        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+
+        if (diffSeconds <= minSecondsBetweenData) return;
+        lastUpdateTimeGPS = currentTime;
+
+        JSONArray jsonGPS = new JSONArray();
+        jsonGPS.put(latitude);
+        jsonGPS.put(longitude);
+
+        String gpsString = jsonGPS.toString();
+        Log.d(TAG, "obd.pires.data: Getting GPS data: " + gpsString);
+        writeDataToFile("DELETEME_GPS.txt", currentTime.toString() + " " + gpsString);
+
+    }
+
+    private boolean checkPermissions(){
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            return true;
+        } else {
+            requestPermissions();
+            return false;
+        }
+    }
+
+    private void requestPermissions() {
+        ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                FINE_LOCATION_REQUEST);
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == FINE_LOCATION_REQUEST) {
+            // Received permission result for Location permission.
+            Log.i(TAG, "Received response for Location permission request.");
+
+            // Check if the only required permission has been granted
+            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Camera permission has been granted, preview can be displayed
+                Log.i(TAG, "Location permission has now been granted. Now call initLocationUpdate");
+                initLocationUpdate();
+            } else {
+//                Snackbar.make(mainLayout, R.string.rational_location_permission,
+//                                Snackbar.LENGTH_INDEFINITE)
+//                        .setAction(getString(R.string.ok), new View.OnClickListener() {
+//                            @Override
+//                            public void onClick(View view) {
+//                                requestPermissions();
+//                            }
+//                        }).show();
+
+            }
+        } else {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        }
+    }
+
+
+    @Override
+    protected void onStop() {
+        if (toast != null) {
+            toast.cancel();
+        }
+        super.onStop();
     }
 }
