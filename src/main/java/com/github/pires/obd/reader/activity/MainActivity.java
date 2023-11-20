@@ -17,6 +17,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.GnssStatus;
 import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
@@ -46,10 +47,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-<<<<<<< HEAD
-import androidx.appcompat.widget.Toolbar;
-=======
->>>>>>> 64aa104 (get magnetic field for bearing)
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -120,16 +117,13 @@ import com.google.android.gms.location.SettingsClient;
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
-<<<<<<< HEAD
     private float gravity[] = {0, 0, 0};
-=======
     GnssStatus.Callback mGnssStatusCallback;
     LocationManager mLocationManager;
     private float compass_last_measured_bearing = 0;
     private final float SMOOTHING_FACTOR_COMPASS = 0.8F;
     private float gravity_vec[] = {0, 0, 0};
     private float magnetic_field_vec[] = {0, 0, 0};
->>>>>>> 64aa104 (get magnetic field for bearing)
     private float linear_acceleration[] = {0, 0, 0};
 
     private HashMap<String, Date> resourceNameTolastDataUpdate = new HashMap<String, Date>();
