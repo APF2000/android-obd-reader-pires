@@ -48,6 +48,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -78,6 +79,8 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -115,8 +118,10 @@ import com.google.android.gms.location.SettingsClient;
 
 // Some code taken from https://github.com/barbeau/gpstest
 
+@RequiresApi(api = Build.VERSION_CODES.O)
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
+    SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
     GnssStatus.Callback mGnssStatusCallback;
     LocationManager mLocationManager;
@@ -134,7 +139,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private Date lastUpdateTimeGPS = new Date();
     private Date lastBearingUpdate = new Date();
 
-    private final long minSecondsBetweenData = 1;
+    private final long minMillisBetweenData = 50;
     private static final String TAG = MainActivity.class.getName();
     private static final int NO_BLUETOOTH_ID = 0;
     private static final int BLUETOOTH_DISABLED = 1;
@@ -225,19 +230,19 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
             if (lastUpdateTimeAcceleration == null) {
                 lastUpdateTimeAcceleration = new Date();
-                lastUpdateTimeAcceleration.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+                lastUpdateTimeAcceleration.setTime(currentTime.getTime() - 2000 * minMillisBetweenData);
             }
 
             long diffInMillis = currentTime.getTime() - lastUpdateTimeAcceleration.getTime();
-            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
-            if (diffSeconds <= minSecondsBetweenData) return;
+            if (diffInMillis <= minMillisBetweenData) return;
             lastUpdateTimeAcceleration = currentTime;
 
             String accelerationString = jsonAcceleration.toString();
             Log.d("arthur", "Getting acceleration data: " + accelerationString);
             writeDataToFile("DELETEME_ACCELERATION.txt",
-                    currentTime.toString() + " " + accelerationString);
+                    fmt.format(currentTime) + " " + accelerationString);
 
             //updateTextView(acceleration, acc);
 
@@ -330,9 +335,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             Date lastUpdateTime = lastOrientUpdate;
 
             long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
-            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
-            if (diffSeconds <= minSecondsBetweenData) return;
+            if (diffInMillis <= minMillisBetweenData) return;
             lastOrientUpdate = currentTime;
 
             DecimalFormat df = new DecimalFormat("0.00");
@@ -346,7 +351,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             jsonContent.put(roll_string);
 
             Log.d("arthur", "Getting orientation data");
-            writeDataToFile("DELETEME_ORIENTATION.txt", currentTime.toString() + " " + jsonContent.toString());
+            writeDataToFile("DELETEME_ORIENTATION.txt", fmt.format(currentTime) + " " + jsonContent.toString());
         }
 
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
@@ -598,13 +603,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         Date lastUpdateTime = resourceNameTolastDataUpdate.get(cmdName);
         if (lastUpdateTime == null) {
             lastUpdateTime = new Date();
-            lastUpdateTime.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+            lastUpdateTime.setTime(currentTime.getTime() - 2000 * minMillisBetweenData);
         }
 
         long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
-        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
-        if (diffSeconds <= minSecondsBetweenData) return;
+        if (diffInMillis <= minMillisBetweenData) return;
         resourceNameTolastDataUpdate.put(cmdName, currentTime);
 
         // https://stackoverflow.com/questions/10717838/how-to-create-json-format-data-in-android
@@ -615,7 +620,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
 
         Log.d("arthur", "Getting data from OBD");
-        writeDataToFile("DELETEME.txt", currentTime.toString() + " " + jsonContent.toString());
+        writeDataToFile("DELETEME.txt", fmt.format(currentTime) + " " + jsonContent.toString());
 
     }
 
@@ -920,13 +925,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
                     if (lastBearingUpdate == null) {
                         lastBearingUpdate = new Date();
-                        lastBearingUpdate.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+                        lastBearingUpdate.setTime(currentTime.getTime() - 2000 * minMillisBetweenData);
                     }
 
                     long diffInMillis = currentTime.getTime() - lastBearingUpdate.getTime();
-                    long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//                    long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
-                    if (diffSeconds <= minSecondsBetweenData) return;
+                    if (diffInMillis <= minMillisBetweenData) return;
                     lastBearingUpdate = currentTime;
 
                     DecimalFormat df = new DecimalFormat("0.00");
@@ -937,7 +942,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
                     String contentString = jsonContent.toString();
                     Log.d(TAG, "obd.pires.data: Getting bearing data: " + contentString);
-                    writeDataToFile("DELETEME_BEARING.txt", currentTime.toString() + " " + contentString);
+                    writeDataToFile("DELETEME_BEARING.txt", fmt.format(currentTime) + " " + contentString);
 
                 }
             }
@@ -1412,13 +1417,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         if (lastUpdateTimeGPS == null) {
             lastUpdateTimeGPS = new Date();
-            lastUpdateTimeGPS.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+            lastUpdateTimeGPS.setTime(currentTime.getTime() - 2000 * minMillisBetweenData);
         }
 
         long diffInMillis = currentTime.getTime() - lastUpdateTimeGPS.getTime();
-        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
-        if (diffSeconds <= minSecondsBetweenData) return;
+        if (diffInMillis <= minMillisBetweenData) return;
         lastUpdateTimeGPS = currentTime;
 
         JSONArray jsonGPS = new JSONArray();
@@ -1427,7 +1432,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         String gpsString = jsonGPS.toString();
         Log.d(TAG, "obd.pires.data: Getting GPS data: " + gpsString);
-        writeDataToFile("DELETEME_GPS.txt", currentTime.toString() + " " + gpsString);
+        writeDataToFile("DELETEME_GPS.txt", fmt.format(currentTime) + " " + gpsString);
 
     }
 
