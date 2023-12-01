@@ -716,7 +716,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 .setGoogleIdTokenRequestOptions(GoogleIdTokenRequestOptions.builder()
                         .setSupported(true)
                         // Your server's client ID, not your Android client ID.
-                        .setServerClientId(getString(R.string.your_web_client_id))
+                        .setServerClientId(getString(R.string.web_client_id))
                         // Show all accounts on the device.
                         .setFilterByAuthorizedAccounts(false)
                         .build())
