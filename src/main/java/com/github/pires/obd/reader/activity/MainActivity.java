@@ -1148,6 +1148,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 return build.create();
             case BLUETOOTH_DISABLED:
                 Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    throw new RuntimeException("bluetooth is disabled");
+                }
                 startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
                 return build.create();
             case NO_ORIENTATION_SENSOR:
