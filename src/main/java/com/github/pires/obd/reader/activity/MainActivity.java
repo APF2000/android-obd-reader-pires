@@ -121,6 +121,9 @@ import com.google.android.gms.location.SettingsClient;
 @RequiresApi(api = Build.VERSION_CODES.O)
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
+
+    private SignInClient oneTapClient;
+    private BeginSignInRequest signUpRequest;
     SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
     GnssStatus.Callback mGnssStatusCallback;
@@ -707,6 +710,17 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        oneTapClient = Identity.getSignInClient(this);
+        signUpRequest = BeginSignInRequest.builder()
+                .setGoogleIdTokenRequestOptions(GoogleIdTokenRequestOptions.builder()
+                        .setSupported(true)
+                        // Your server's client ID, not your Android client ID.
+                        .setServerClientId(getString(R.string.your_web_client_id))
+                        // Show all accounts on the device.
+                        .setFilterByAuthorizedAccounts(false)
+                        .build())
+                .build();
 
         mLocationManager =
                 (LocationManager) getSystemService(LOCATION_SERVICE);
