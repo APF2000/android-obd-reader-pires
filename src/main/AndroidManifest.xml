@@ -1,22 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
     android:versionCode="13"
     android:versionName="2.0-RC2">
 
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
-
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-
     <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
     <uses-permission android:name="android.permission.READ_LOGS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -25,15 +21,19 @@
         android:allowBackup="true"
         android:icon="@drawable/ic_btcar"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"
+        android:theme="@style/AppTheme">
         <activity
-            android:name="com.github.pires.obd.reader.activity.MainActivity"
+            android:name=".ui.login.LoginActivity"
+            android:exported="false"
+            android:label="@string/title_activity_login" />
+        <activity
+            android:name=".activity.MainActivity"
             android:configChanges="orientation|screenSize"
-            android:launchMode="singleInstance"
+            android:exported="true"
             android:label="@string/app_name"
-            android:requestLegacyExternalStorage="true"
-            android:exported="true">
+            android:launchMode="singleInstance"
+            android:requestLegacyExternalStorage="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -41,27 +41,26 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.github.pires.obd.reader.activity.ConfigActivity"
-            android:launchMode="singleInstance"
-            android:label="@string/app_name"></activity>
+            android:name=".activity.ConfigActivity"
+            android:label="@string/app_name"
+            android:launchMode="singleInstance" />
         <activity
-            android:name="com.github.pires.obd.reader.activity.TroubleCodesActivity"
-            android:launchMode="singleInstance"
-            android:label="@string/title_activity_trouble_codes"></activity>
-
+            android:name=".activity.TroubleCodesActivity"
+            android:label="@string/title_activity_trouble_codes"
+            android:launchMode="singleInstance" />
         <activity
-            android:name="com.github.pires.obd.reader.activity.TripListActivity"
-            android:launchMode="singleInstance"
-            android:label="@string/title_activity_trips_list"></activity>
+            android:name=".activity.TripListActivity"
+            android:label="@string/title_activity_trips_list"
+            android:launchMode="singleInstance" />
 
         <service
-            android:name="com.github.pires.obd.reader.io.ObdGatewayService"
-            android:launchMode="singleInstance"
-            android:exported="false" />
+            android:name=".io.ObdGatewayService"
+            android:exported="false"
+            android:launchMode="singleInstance" />
         <service
-            android:name="com.github.pires.obd.reader.io.MockObdGatewayService"
-            android:launchMode="singleInstance"
-            android:exported="false" />
+            android:name=".io.MockObdGatewayService"
+            android:exported="false"
+            android:launchMode="singleInstance" />
     </application>
 
 </manifest>

@@ -42,6 +42,9 @@ android {
     lint {
         abortOnError false
     }
+    buildFeatures {
+        viewBinding true
+    }
 }
 
 dependencies {
@@ -49,6 +52,11 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.0.0'
     implementation 'com.github.pires:obd-java-api:1.0-RC16'
     implementation 'org.roboguice:roboguice:3.+'
+    implementation 'com.google.android.material:material:1.8.0'
+    implementation 'androidx.annotation:annotation:1.6.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.6.1'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1'
 //    implementation files('C:\\Program Files (x86)\\MySQL\\Connector J 8.0\\mysql-connector-j-8.0.33.jar')
     compileOnly 'org.roboguice:roboblender:3.+'
     implementation 'com.squareup.retrofit:retrofit:1.9.0'
