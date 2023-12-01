@@ -25,7 +25,7 @@ android {
     compileSdkVersion 33
     // android.buildToolsVersion "30.0.3"
     defaultConfig {
-        minSdkVersion 21
+        minSdkVersion 28 // https://stackoverflow.com/questions/56716047/execution-failed-for-task-appcheckdebugduplicateclasses-ionic4-android/68443034#68443034
         targetSdkVersion 33
         applicationId 'com.github.pires.obd.reader'
     }
