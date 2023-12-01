@@ -13,7 +13,6 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
-import android.content.IntentSender;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
@@ -33,9 +32,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.github.pires.obd.reader.R;
-import com.github.pires.obd.reader.activity.MainActivity;
-import com.github.pires.obd.reader.ui.login.LoginViewModel;
-import com.github.pires.obd.reader.ui.login.LoginViewModelFactory;
 import com.github.pires.obd.reader.databinding.ActivityLoginBinding;
 import com.google.android.gms.auth.api.identity.BeginSignInRequest;
 import com.google.android.gms.auth.api.identity.BeginSignInResult;
