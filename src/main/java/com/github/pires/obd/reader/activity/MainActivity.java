@@ -131,11 +131,7 @@ import com.google.android.gms.location.SettingsClient;
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
-    private SignInClient oneTapClient;
-    private Button signInBtn;
-    private static final int REQ_ONE_TAP = 2;  // Can be any integer unique to the Activity.
-    private boolean showOneTapUI = true;
-    private BeginSignInRequest signUpRequest;
+
     SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
     GnssStatus.Callback mGnssStatusCallback;
@@ -722,45 +718,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        signInBtn = findViewById(R.id.btnSignIn);
-
-        signInBtn.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View view) {
-                oneTapClient.beginSignIn(signUpRequest)
-                    .addOnSuccessListener(MainActivity.this, new OnSuccessListener<BeginSignInResult>() {
-                        @Override
-                        public void onSuccess(BeginSignInResult result) {
-                            try {
-//                                startIntentSenderForResult(
-//                                        result.getPendingIntent().getIntentSender(), REQ_ONE_TAP,
-//                                        null, 0, 0, 0);
-                            } catch (IntentSender.SendIntentException e) {
-                                Log.e(TAG, "Couldn't start One Tap UI: " + e.getLocalizedMessage());
-                            }
-                        }
-                    })
-                    .addOnFailureListener(MainActivity.this, new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception e) {
-                            // No Google Accounts found. Just continue presenting the signed-out UI.
-                            Log.d(TAG, e.getLocalizedMessage());
-                        }
-                    });
-            }
-        });
-
-        oneTapClient = Identity.getSignInClient(this);
-        signUpRequest = BeginSignInRequest.builder()
-                .setGoogleIdTokenRequestOptions(BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
-                        .setSupported(true)
-                        // Your server's client ID, not your Android client ID.
-                        .setServerClientId(getString(R.string.web_client_id))
-                        // Show all accounts on the device.
-                        .setFilterByAuthorizedAccounts(false)
-                        .build())
-                .build();
 
         mLocationManager =
                 (LocationManager) getSystemService(LOCATION_SERVICE);

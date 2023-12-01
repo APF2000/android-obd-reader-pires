@@ -1,10 +1,19 @@
 package com.github.pires.obd.reader.ui.login;
 
+import static android.content.ContentValues.TAG;
+
 import android.app.Activity;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.IntentSenderRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
+import android.content.IntentSender;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
@@ -13,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
@@ -23,11 +33,26 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.github.pires.obd.reader.R;
+import com.github.pires.obd.reader.activity.MainActivity;
 import com.github.pires.obd.reader.ui.login.LoginViewModel;
 import com.github.pires.obd.reader.ui.login.LoginViewModelFactory;
 import com.github.pires.obd.reader.databinding.ActivityLoginBinding;
+import com.google.android.gms.auth.api.identity.BeginSignInRequest;
+import com.google.android.gms.auth.api.identity.BeginSignInResult;
+import com.google.android.gms.auth.api.identity.Identity;
+import com.google.android.gms.auth.api.identity.SignInClient;
+import com.google.android.gms.auth.api.identity.SignInCredential;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 
 public class LoginActivity extends AppCompatActivity {
+
+    private SignInClient oneTapClient;
+    private Button signInBtn;
+    private static final int REQ_ONE_TAP = 2;  // Can be any integer unique to the Activity.
+    private boolean showOneTapUI = true;
+    private BeginSignInRequest signUpRequest;
 
     private LoginViewModel loginViewModel;
     private ActivityLoginBinding binding;
@@ -35,6 +60,64 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        signInBtn = findViewById(R.id.btnSignIn);
+
+        ActivityResultLauncher<IntentSenderRequest> activityResultLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), new ActivityResultCallback<ActivityResult>() {
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        if(result.getResultCode() == Activity.RESULT_OK)
+                        {
+                            try {
+                                SignInCredential credential = oneTapClient.getSignInCredentialFromIntent(result.getData());
+                                String idToken = credential.getGoogleIdToken();
+                                if (idToken !=  null) {
+                                    String email = credential.getId();
+                                    Toast.makeText(getApplicationContext(), "email: " + email, Toast.LENGTH_SHORT).show();
+                                    Log.d(TAG, "Got ID token.");
+                                }
+                            } catch (ApiException e) {
+                                e.printStackTrace();
+                                throw new RuntimeException("api exception");
+                            }
+                        }
+                    }
+                });
+
+        signInBtn.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view) {
+                oneTapClient.beginSignIn(signUpRequest)
+                        .addOnSuccessListener(LoginActivity.this, new OnSuccessListener<BeginSignInResult>() {
+                            @Override
+                            public void onSuccess(BeginSignInResult result) {
+                                IntentSenderRequest intentSenderRequest =
+                                        new IntentSenderRequest.Builder(result.getPendingIntent().getIntentSender()).build();
+
+                                activityResultLauncher.launch(intentSenderRequest);
+
+                            }
+                        })
+                        .addOnFailureListener(LoginActivity.this, new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                // No Google Accounts found. Just continue presenting the signed-out UI.
+                                Log.d(TAG, e.getLocalizedMessage());
+                            }
+                        });
+            }
+        });
+
+        oneTapClient = Identity.getSignInClient(this);
+        signUpRequest = BeginSignInRequest.builder()
+                .setGoogleIdTokenRequestOptions(BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
+                        .setSupported(true)
+                        // Your server's client ID, not your Android client ID.
+                        .setServerClientId(getString(R.string.web_client_id))
+                        // Show all accounts on the device.
+                        .setFilterByAuthorizedAccounts(false)
+                        .build())
+                .build();
 
         binding = ActivityLoginBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -122,6 +205,10 @@ public class LoginActivity extends AppCompatActivity {
                         passwordEditText.getText().toString());
             }
         });
+    }
+
+    private ActivityResultLauncher<IntentSenderRequest> registerForActivityResult(ActivityResultContracts.StartActivityForResult startActivityForResult, ActivityResultCallback<ActivityResult> apiException) {
+        return null;
     }
 
     private void updateUiWithUser(LoggedInUserView model) {
