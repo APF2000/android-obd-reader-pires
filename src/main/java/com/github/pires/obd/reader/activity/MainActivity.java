@@ -10,7 +10,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -39,11 +38,9 @@ import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
-import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TableLayout;
 import android.widget.TableRow;
@@ -72,12 +69,6 @@ import com.github.pires.obd.reader.net.ObdReading;
 import com.github.pires.obd.reader.net.ObdService;
 import com.github.pires.obd.reader.trips.TripLog;
 import com.github.pires.obd.reader.trips.TripRecord;
-import com.google.android.gms.auth.api.identity.BeginSignInRequest;
-import com.google.android.gms.auth.api.identity.BeginSignInResult;
-import com.google.android.gms.auth.api.identity.Identity;
-import com.google.android.gms.auth.api.identity.SignInClient;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.inject.Inject;
 
 import java.io.File;
@@ -88,8 +79,6 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 
 import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAccessor;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -106,8 +95,6 @@ import roboguice.inject.InjectView;
 
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsDistanceUpdatePeriod;
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsUpdatePeriod;
-
-import java.util.concurrent.TimeUnit;
 
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
