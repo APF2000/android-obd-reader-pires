@@ -10,6 +10,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -38,6 +39,7 @@ import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
@@ -71,8 +73,11 @@ import com.github.pires.obd.reader.net.ObdService;
 import com.github.pires.obd.reader.trips.TripLog;
 import com.github.pires.obd.reader.trips.TripRecord;
 import com.google.android.gms.auth.api.identity.BeginSignInRequest;
+import com.google.android.gms.auth.api.identity.BeginSignInResult;
 import com.google.android.gms.auth.api.identity.Identity;
 import com.google.android.gms.auth.api.identity.SignInClient;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.inject.Inject;
 
 import java.io.File;
@@ -128,6 +133,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     private SignInClient oneTapClient;
     private Button signInBtn;
+    private static final int REQ_ONE_TAP = 2;  // Can be any integer unique to the Activity.
+    private boolean showOneTapUI = true;
     private BeginSignInRequest signUpRequest;
     SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
@@ -717,6 +724,32 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         super.onCreate(savedInstanceState);
 
         signInBtn = findViewById(R.id.btnSignIn);
+
+        signInBtn.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view) {
+                oneTapClient.beginSignIn(signUpRequest)
+                    .addOnSuccessListener(MainActivity.this, new OnSuccessListener<BeginSignInResult>() {
+                        @Override
+                        public void onSuccess(BeginSignInResult result) {
+                            try {
+//                                startIntentSenderForResult(
+//                                        result.getPendingIntent().getIntentSender(), REQ_ONE_TAP,
+//                                        null, 0, 0, 0);
+                            } catch (IntentSender.SendIntentException e) {
+                                Log.e(TAG, "Couldn't start One Tap UI: " + e.getLocalizedMessage());
+                            }
+                        }
+                    })
+                    .addOnFailureListener(MainActivity.this, new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            // No Google Accounts found. Just continue presenting the signed-out UI.
+                            Log.d(TAG, e.getLocalizedMessage());
+                        }
+                    });
+            }
+        });
 
         oneTapClient = Identity.getSignInClient(this);
         signUpRequest = BeginSignInRequest.builder()
