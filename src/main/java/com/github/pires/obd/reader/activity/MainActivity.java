@@ -24,7 +24,6 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.location.LocationProvider;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -52,8 +51,6 @@ import androidx.core.content.ContextCompat;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.github.pires.obd.commands.ObdCommand;
 import com.github.pires.obd.commands.SpeedCommand;
@@ -69,7 +66,6 @@ import com.github.pires.obd.reader.io.ObdCommandJob;
 import com.github.pires.obd.reader.io.ObdGatewayService;
 import com.github.pires.obd.reader.io.ObdProgressListener;
 import com.github.pires.obd.reader.net.ObdReading;
-import com.github.pires.obd.reader.net.ObdService;
 import com.github.pires.obd.reader.trips.TripLog;
 import com.github.pires.obd.reader.trips.TripRecord;
 import com.google.inject.Inject;
@@ -82,6 +78,7 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -105,6 +102,8 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -123,6 +122,7 @@ import com.google.android.gms.location.SettingsClient;
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
     private float gravity[] = {0, 0, 0};
+    JSONArray accAddRequests = new JSONArray();
     GnssStatus.Callback mGnssStatusCallback;
     LocationManager mLocationManager;
     private float compass_last_measured_bearing = 0;
@@ -194,8 +194,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         );
 
         queue = Volley.newRequestQueue(this);
-        RequestQueue queue = Volley.newRequestQueue(this);
-        String url = "https://pntdpvkdsc.execute-api.us-east-1.amazonaws.com/default/app_data";
+    }
+
+    private void sendDataToLambda(JSONObject bodyJson){
+        String url = ""; //https://pntdpvkdsc.execute-api.us-east-1.amazonaws.com/default/app_data";
         StringRequest postRequest = new StringRequest(Request.Method.POST, url,
                 response -> {
                     // response
@@ -206,10 +208,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     Log.d("Error.Response", error.toString());
                 }
         ) {
-
             @Override
             public byte[] getBody() throws AuthFailureError {
-                String body_str = "{\"method\": \"get_obd_info\"}";
+
+                String body_str = bodyJson.toString();
 
                 return body_str.getBytes();
             }
@@ -219,19 +221,54 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             {
                 return "application/json";
             }
-
-//            @Override
-//            public Map<String, String> getHeaders() throws AuthFailureError {
-//                Map<String, String> headers = new HashMap<String, String>();
-//                String contentLen = Integer.toString(this.getBody().length);
-//
-////                headers.put("Content-Length", contentLen);
-////                headers.put("Host", "pntdpvkdsc.execute-api.us-east-1.amazonaws.com");
-//
-//                return headers;
-//            }
         };
         queue.add(postRequest);
+    }
+
+    private void getDataFromLambda(JSONObject bodyJson){
+        String url = "https://pntdpvkdsc.execute-api.us-east-1.amazonaws.com/default/app_data";
+        StringRequest getRequest = new StringRequest(Request.Method.GET, url,
+                response -> {
+                    // response
+                    Log.d("Response", response);
+                },
+                error -> {
+                    // error
+                    Log.d("Error.Response", error.toString());
+                }
+        ) {
+            @Override
+            public byte[] getBody() throws AuthFailureError {
+
+                String body_str = bodyJson.toString();
+
+                return body_str.getBytes();
+            }
+
+            @Override
+            public String getBodyContentType()
+            {
+                return "application/json";
+            }
+        };
+        queue.add(getRequest);
+    }
+
+    void sendDataToAws()
+    {
+        // send to aws
+        try {
+//            JSONObject accData = new JSONObject();
+//            accData.put("data", accAddRequests);
+//            accData.put("method", "add_acceleration");
+
+            sendDataToLambda(accAddRequests.getJSONObject(0));
+            Log.d(TAG, "sent data to AWS");
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }finally{
+            accAddRequests = new JSONArray();
+        }
     }
 
 
@@ -270,6 +307,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
             String gravity_val_string = df.format(gravity_val);
 
+
             JSONArray jsonAcceleration = new JSONArray();
             jsonAcceleration.put(acc_x_string);
             jsonAcceleration.put(acc_y_string);
@@ -293,6 +331,25 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
             if (diffSeconds <= minSecondsBetweenData) return;
             lastUpdateTimeAcceleration = currentTime;
+
+            JSONObject jsonObjAcc = new JSONObject();
+            try {
+                jsonObjAcc.put("timestamp", currentTime.toString());
+
+                jsonObjAcc.put("acceleration_x", acc_x_string);
+                jsonObjAcc.put("acceleration_y", acc_y_string);
+                jsonObjAcc.put("acceleration_z", acc_z_string);
+
+                jsonObjAcc.put("gravity_x", gravity_x_string);
+                jsonObjAcc.put("gravity_y", gravity_y_string);
+                jsonObjAcc.put("gravity_z", gravity_z_string);
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+
+            accAddRequests.put(jsonObjAcc);
+
+            // backup
 
             String accelerationString = jsonAcceleration.toString();
             Log.d("arthur", "Getting acceleration data: " + accelerationString);
@@ -323,38 +380,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             // do nothing
         }
     };
-
-//    private final SensorEventListener headingListener = new SensorEventListener() {
-//        public void onSensorChanged(SensorEvent event) {
-//            float heading = event.values[0];
-//            float accuracy = event.values[1];
-//
-//            Date currentTime = Calendar.getInstance().getTime();
-//
-//            Date lastUpdateTime = lastHeadingUpdate;
-//
-//            long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
-//            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
-//
-//            if (diffSeconds <= minSecondsBetweenData) return;
-//            lastHeadingUpdate = currentTime;
-//
-//            DecimalFormat df = new DecimalFormat("0.00");
-//            String heading_string = df.format(heading);
-//            String accuracy_string = df.format(accuracy);
-//
-//            JSONArray jsonContent = new JSONArray();
-//            jsonContent.put(heading_string);
-//            jsonContent.put(accuracy_string);
-//
-//            Log.d("arthur", "Getting heaing data");
-//            writeDataToFile("DELETEME_HEADING.txt", currentTime.toString() + " " + jsonContent.toString());
-//        }
-//
-//        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-//            // do nothing
-//        }
-//    };
 
 
     @InjectView(R.id.compass_text)
@@ -414,42 +439,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             // do nothing
         }
     };
-
-//    @InjectView(R.id.acceleration_text)
-//    private TextView acceleration;
-//    private final SensorEventListener accelerationListener = new SensorEventListener() {
-//        public void onSensorChanged(SensorEvent event) {
-//            /*
-//            // alpha is calculated as t / (t + dT)
-//            // with t, the low-pass filter's time-constant
-//            // and dT, the event delivery rate
-//
-//            final float alpha = 0.8;
-//
-//            gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
-//            gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
-//            gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
-//
-//            linear_acceleration[0] = event.values[0] - gravity[0];
-//            linear_acceleration[1] = event.values[1] - gravity[1];
-//            linear_acceleration[2] = event.values[2] - gravity[2];
-//        }
-//
-//*/
-//            float x = event.values[0];
-//            float y = event.values[1];
-//            float z = event.values[2];
-//
-//            DecimalFormat df = new DecimalFormat("#0.0");
-//            String acc = df.format(x);
-//
-//            updateTextView(acceleration, acc);
-//
-//        }
-//        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-//            // do nothing
-//        }
-//    };
 
 
     @InjectView(R.id.BT_STATUS)
@@ -711,6 +700,15 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                sendDataToAws();
+                handler.postDelayed(this,30 * 1000);
+            }
+        },20000);
 
         final BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
         if (btAdapter != null)
