@@ -50,6 +50,11 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
 import com.github.pires.obd.commands.ObdCommand;
 import com.github.pires.obd.commands.SpeedCommand;
 import com.github.pires.obd.commands.engine.RPMCommand;
@@ -83,9 +88,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import retrofit.RestAdapter;
-import retrofit.RetrofitError;
-import retrofit.client.Response;
+//import retrofit.RestAdapter;
+//import retrofit.RetrofitError;
+//import retrofit.client.Response;
 import roboguice.RoboGuice;
 import roboguice.activity.RoboActivity;
 import roboguice.inject.ContentView;
@@ -189,6 +194,35 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         );
 
         queue = Volley.newRequestQueue(this);
+        RequestQueue queue = Volley.newRequestQueue(this);
+        String url = "https://pntdpvkdsc.execute-api.us-east-1.amazonaws.com/default/app_data";
+        StringRequest postRequest = new StringRequest(Request.Method.POST, url,
+                response -> {
+                    // response
+                    Log.d("Response", response);
+                },
+                error -> {
+                    // error
+                    Log.d("Error.Response", error.toString());
+                }
+        ) {
+            @Override
+            protected Map<String, String> getParams()
+            {
+                Map<String, String>  params = new HashMap<String, String>();
+                params.put("method", "get_obd_info");
+
+                return params;
+            }
+
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("Content-Type", "application/json");
+                return params;
+            }
+        };
+        queue.add(postRequest);
     }
 
 
@@ -456,7 +490,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     Map<String, String> temp = new HashMap<String, String>();
                     temp.putAll(commandResult);
                     ObdReading reading = new ObdReading(lat, lon, alt, System.currentTimeMillis(), vin, temp);
-                    new UploadAsyncTask().execute(reading);
+//                    new UploadAsyncTask().execute(reading);
 
                 } else if (prefs.getBoolean(ConfigActivity.ENABLE_FULL_LOGGING_KEY, false)) {
                     // Write the current reading to CSV
@@ -1214,32 +1248,32 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     /**
      * Uploading asynchronous task
      */
-    private class UploadAsyncTask extends AsyncTask<ObdReading, Void, Void> {
-
-        @Override
-        protected Void doInBackground(ObdReading... readings) {
-            Log.d(TAG, "Uploading " + readings.length + " readings..");
-            // instantiate reading service client
-            final String endpoint = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
-            RestAdapter restAdapter = new RestAdapter.Builder()
-                    .setEndpoint(endpoint)
-                    .build();
-            ObdService service = restAdapter.create(ObdService.class);
-            // upload readings
-            for (ObdReading reading : readings) {
-                try {
-                    Response response = service.uploadReading(reading);
-                    assert response.getStatus() == 200;
-                } catch (RetrofitError re) {
-                    Log.e(TAG, re.toString());
-                }
-
-            }
-            Log.d(TAG, "Done");
-            return null;
-        }
-
-    }
+//    private class UploadAsyncTask extends AsyncTask<ObdReading, Void, Void> {
+//
+//        @Override
+//        protected Void doInBackground(ObdReading... readings) {
+//            Log.d(TAG, "Uploading " + readings.length + " readings..");
+//            // instantiate reading service client
+//            final String endpoint = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
+//            RestAdapter restAdapter = new RestAdapter.Builder()
+//                    .setEndpoint(endpoint)
+//                    .build();
+//            ObdService service = restAdapter.create(ObdService.class);
+//            // upload readings
+//            for (ObdReading reading : readings) {
+//                try {
+//                    Response response = service.uploadReading(reading);
+//                    assert response.getStatus() == 200;
+//                } catch (RetrofitError re) {
+//                    Log.e(TAG, re.toString());
+//                }
+//
+//            }
+//            Log.d(TAG, "Done");
+//            return null;
+//        }
+//
+//    }
 
     private void initViewsAndListener() {
         toast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
