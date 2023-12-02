@@ -182,7 +182,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         ActivityCompat.requestPermissions( this,    new String[]{
                 Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.MANAGE_EXTERNAL_STORAGE
+                Manifest.permission.MANAGE_EXTERNAL_STORAGE,
+                Manifest.permission.BLUETOOTH,
+                Manifest.permission.BLUETOOTH_ADMIN
                 }, 1
         );
 
