@@ -13,6 +13,8 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
+import android.content.Intent;
+import android.content.IntentSender;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
@@ -35,10 +37,12 @@ import com.github.pires.obd.reader.R;
 import com.github.pires.obd.reader.databinding.ActivityLoginBinding;
 import com.google.android.gms.auth.api.identity.BeginSignInRequest;
 import com.google.android.gms.auth.api.identity.BeginSignInResult;
+import com.google.android.gms.auth.api.identity.GetSignInIntentRequest;
 import com.google.android.gms.auth.api.identity.Identity;
 import com.google.android.gms.auth.api.identity.SignInClient;
 import com.google.android.gms.auth.api.identity.SignInCredential;
 import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 
@@ -53,6 +57,100 @@ public class LoginActivity extends AppCompatActivity {
     private LoginViewModel loginViewModel;
     private ActivityLoginBinding binding;
 
+//    private static final int REQUEST_CODE_GOOGLE_SIGN_IN = 1; /* unique request id */
+//
+//    private void signIn() {
+//        GetSignInIntentRequest request =
+//                GetSignInIntentRequest.builder()
+//                        .setServerClientId(getString(R.string.web_client_id))
+//                        .build();
+//
+//        Identity.getSignInClient(getApplicationContext())
+//                .getSignInIntent(request)
+//                .addOnSuccessListener(
+//                        result -> {
+//                            try {
+//                                startIntentSenderForResult(
+//                                        result.getIntentSender(),
+//                                        REQUEST_CODE_GOOGLE_SIGN_IN,
+//                                        /* fillInIntent= */ null,
+//                                        /* flagsMask= */ 0,
+//                                        /* flagsValue= */ 0,
+//                                        /* extraFlags= */ 0,
+//                                        /* options= */ null);
+//                            } catch (IntentSender.SendIntentException e) {
+//                                Log.e(TAG, "Google Sign-in failed");
+//                                throw new RuntimeException(e);
+//                            }
+//                        })
+//                .addOnFailureListener(
+//                        e -> {
+//                            Log.e(TAG, "Google Sign-in failed", e);
+//                        });
+//    }
+//
+//    @Override
+//    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+//        super.onActivityResult(requestCode, resultCode, data);
+//        if(resultCode == Activity.RESULT_OK) {
+//            if (requestCode == REQUEST_CODE_GOOGLE_SIGN_IN) {
+//                try {
+//                    SignInCredential credential = Identity.getSignInClient(this).getSignInCredentialFromIntent(data);
+//                    // Signed in successfully - show authenticated UI
+////                    updateUI(credential);
+//                } catch (ApiException e) {
+//                    // The ApiException status code indicates the detailed failure reason.
+//                }
+//            }
+//        }
+//    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        switch (requestCode) {
+            case REQ_ONE_TAP:
+                try {
+                    SignInCredential credential = oneTapClient.getSignInCredentialFromIntent(data);
+                    String idToken = credential.getGoogleIdToken();
+                    String username = credential.getId();
+                    String password = credential.getPassword();
+                    if (idToken !=  null) {
+                        // Got an ID token from Google. Use it to authenticate
+                        // with your backend.
+                        Log.d(TAG, "Got ID token.");
+                    } else if (password != null) {
+                        // Got a saved username and password. Use them to authenticate
+                        // with your backend.
+                        Log.d(TAG, "Got password.");
+                    }
+                } catch (ApiException e) {
+
+                    switch (e.getStatusCode()) {
+                        case CommonStatusCodes.CANCELED:
+                            Log.d(TAG, "One-tap dialog was closed.");
+                            // Don't re-prompt the user.
+                            showOneTapUI = false;
+                            break;
+                        case CommonStatusCodes.NETWORK_ERROR:
+                            Log.d(TAG, "One-tap encountered a network error.");
+                            // Try again or just ignore.
+                            break;
+                        default:
+                            Log.d(TAG, "Couldn't get credential from result."
+                                    + e.getLocalizedMessage());
+                            break;
+                    }
+
+                    Toast.makeText(getApplicationContext(), "login nao completado com sucesso", Toast.LENGTH_SHORT).show();
+                    e.printStackTrace();
+                    throw new RuntimeException("api exception");
+                }
+                break;
+        }
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,26 +160,26 @@ public class LoginActivity extends AppCompatActivity {
 
         signInBtn = findViewById(R.id.btnSignIn);
 
-        ActivityResultLauncher<IntentSenderRequest> activityResultLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), new ActivityResultCallback<ActivityResult>() {
-                    @Override
-                    public void onActivityResult(ActivityResult result) {
-                        if(result.getResultCode() == Activity.RESULT_OK)
-                        {
-                            try {
-                                SignInCredential credential = oneTapClient.getSignInCredentialFromIntent(result.getData());
-                                String idToken = credential.getGoogleIdToken();
-                                if (idToken !=  null) {
-                                    String email = credential.getId();
-                                    Toast.makeText(getApplicationContext(), "email: " + email, Toast.LENGTH_SHORT).show();
-                                    Log.d(TAG, "Got ID token.");
-                                }
-                            } catch (ApiException e) {
-                                e.printStackTrace();
-                                throw new RuntimeException("api exception");
-                            }
-                        }
-                    }
-                });
+//        ActivityResultLauncher<IntentSenderRequest> activityResultLauncher = registerForActivityResult(
+//                new ActivityResultContracts.StartActivityForResult(),
+//                result -> {
+//                    if(result.getResultCode() == Activity.RESULT_OK)
+//                    {
+//                        try {
+//                            SignInCredential credential = oneTapClient.getSignInCredentialFromIntent(result.getData());
+//                            String idToken = credential.getGoogleIdToken();
+//                            if (idToken !=  null) {
+//                                String email = credential.getId();
+//                                Toast.makeText(getApplicationContext(), "email: " + email, Toast.LENGTH_SHORT).show();
+//                                Log.d(TAG, "Got ID token.");
+//                            }
+//                        } catch (ApiException e) {
+//                            Toast.makeText(getApplicationContext(), "login nao completado com sucesso", Toast.LENGTH_SHORT).show();
+//                            e.printStackTrace();
+//                            throw new RuntimeException("api exception");
+//                        }
+//                    }
+//                });
 
         signInBtn.setOnClickListener(new View.OnClickListener(){
             @Override
@@ -93,7 +191,10 @@ public class LoginActivity extends AppCompatActivity {
                                 IntentSenderRequest intentSenderRequest =
                                         new IntentSenderRequest.Builder(result.getPendingIntent().getIntentSender()).build();
 
-                                activityResultLauncher.launch(intentSenderRequest);
+//                                activityResultLauncher.launch(intentSenderRequest);
+                                int requestCode = 0;
+                                int resultCode = 0;
+                                onActivityResult(requestCode, resultCode, null);
 
                             }
                         })
@@ -204,7 +305,12 @@ public class LoginActivity extends AppCompatActivity {
 //        });
     }
 
-    private ActivityResultLauncher<IntentSenderRequest> registerForActivityResult(ActivityResultContracts.StartActivityForResult startActivityForResult, ActivityResultCallback<ActivityResult> apiException) {
+    private ActivityResultLauncher<IntentSenderRequest> registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult startActivityForResult,
+            ActivityResultCallback<ActivityResult> apiException) {
+
+
+
         return null;
     }
 
