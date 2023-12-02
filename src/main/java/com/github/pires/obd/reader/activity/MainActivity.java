@@ -206,21 +206,30 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     Log.d("Error.Response", error.toString());
                 }
         ) {
+
             @Override
-            protected Map<String, String> getParams()
+            public byte[] getBody() throws AuthFailureError {
+                String body_str = "{\"method\": \"get_obd_info\"}";
+
+                return body_str.getBytes();
+            }
+
+            @Override
+            public String getBodyContentType()
             {
-                Map<String, String>  params = new HashMap<String, String>();
-                params.put("method", "get_obd_info");
-
-                return params;
+                return "application/json";
             }
 
-            @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
-                Map<String, String> params = new HashMap<String, String>();
-                params.put("Content-Type", "application/json");
-                return params;
-            }
+//            @Override
+//            public Map<String, String> getHeaders() throws AuthFailureError {
+//                Map<String, String> headers = new HashMap<String, String>();
+//                String contentLen = Integer.toString(this.getBody().length);
+//
+////                headers.put("Content-Length", contentLen);
+////                headers.put("Host", "pntdpvkdsc.execute-api.us-east-1.amazonaws.com");
+//
+//                return headers;
+//            }
         };
         queue.add(postRequest);
     }
