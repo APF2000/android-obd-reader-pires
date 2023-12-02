@@ -102,11 +102,11 @@ public class LoginActivity extends AppCompatActivity {
                             public void onFailure(@NonNull Exception e) {
                                 // No Google Accounts found. Just continue presenting the signed-out UI.
                                 Log.d(TAG, e.getLocalizedMessage());
+                                Toast.makeText(getApplicationContext(), "Erro de sign-in", Toast.LENGTH_LONG).show();
                             }
                         });
             }
         });
-
         oneTapClient = Identity.getSignInClient(this);
         signUpRequest = BeginSignInRequest.builder()
                 .setGoogleIdTokenRequestOptions(BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
