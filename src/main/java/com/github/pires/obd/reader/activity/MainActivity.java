@@ -122,6 +122,7 @@ import com.google.android.gms.location.SettingsClient;
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
     private float gravity[] = {0, 0, 0};
+    private boolean isDataAcquisitionEnabled = false;
     JSONArray accAddRequests = new JSONArray();
     JSONArray obdAddRequests = new JSONArray();
     JSONArray locationAddRequests = new JSONArray();
@@ -304,7 +305,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     @InjectView(R.id.acceleration_text)
     private TextView acceleration;
     private final SensorEventListener accelerationListener = new SensorEventListener() {
-        public void onSensorChanged(SensorEvent event) {
+        public void onSensorChanged(SensorEvent event)
+        {
+            if(!isDataAcquisitionEnabled) return;
+
             // alpha is calculated as t / (t + dT)
             // with t, the low-pass filter's time-constant
             // and dT, the event delivery rate
@@ -415,7 +419,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private TextView compass;
     private final SensorEventListener orientListener = new SensorEventListener() {
 
-        public void onSensorChanged(SensorEvent event) {
+        public void onSensorChanged(SensorEvent event)
+        {
+            if(!isDataAcquisitionEnabled) return;
+
             float azimuth = event.values[0];
             float pitch = event.values[1];
             float roll = event.values[2];
@@ -593,7 +600,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         Log.d("arthur", "request worked");
     }
 
-    public void stateUpdate(final ObdCommandJob job) {
+    public void stateUpdate(final ObdCommandJob job)
+    {
+        if(!isDataAcquisitionEnabled) return;
+
         final String cmdName = job.getCommand().getName();
         String cmdResult = "";
         final String cmdID = LookUpCommand(cmdName);
@@ -848,7 +858,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
 
         @Override
-        public void onSensorChanged(SensorEvent event) {
+        public void onSensorChanged(SensorEvent event)
+        {
+            if(!isDataAcquisitionEnabled) return;
 
             if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
                 magnetic_field_vec = event.values.clone();
@@ -1088,6 +1100,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 Log.e(TAG, "Can't enable logging to file.", e);
             }
         }
+
+        if(service != null && service.isRunning())
+        {
+            isDataAcquisitionEnabled = true;
+        }
     }
 
     private void stopLiveData() {
@@ -1123,6 +1140,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         if (myCSVWriter != null) {
             myCSVWriter.closeLogCSVWriter();
+        }
+
+        if(service == null || !service.isRunning())
+        {
+            isDataAcquisitionEnabled = false;
         }
     }
 
@@ -1382,7 +1404,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 Looper.myLooper());
 
     }
-    public void onLocationChanged(Location location) {
+    public void onLocationChanged(Location location)
+    {
+        if(!isDataAcquisitionEnabled) return;
+
         mLastLocation = location;
 
         String latitude = Double.toString(location.getLatitude());
