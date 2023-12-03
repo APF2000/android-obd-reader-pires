@@ -30,6 +30,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.preference.Preference;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.Gravity;
@@ -123,6 +124,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     private float gravity[] = {0, 0, 0};
     private boolean isDataAcquisitionEnabled = false;
+    private boolean isDataIndependentOfBluetoothConnectionEnabled = false;
     JSONArray accAddRequests = new JSONArray();
     JSONArray obdAddRequests = new JSONArray();
     JSONArray locationAddRequests = new JSONArray();
@@ -195,6 +197,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 Manifest.permission.BLUETOOTH_ADMIN
                 }, 1
         );
+
+        isDataIndependentOfBluetoothConnectionEnabled = prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, false);
 
         queue = Volley.newRequestQueue(this);
     }
@@ -525,6 +529,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     temp.putAll(commandResult);
                     ObdReading reading = new ObdReading(lat, lon, alt, System.currentTimeMillis(), vin, temp);
 //                    new UploadAsyncTask().execute(reading);
+
+//                    isDataIndependentOfBluetoothConnectionEnabled = prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, false);
 
                 } else if (prefs.getBoolean(ConfigActivity.ENABLE_FULL_LOGGING_KEY, false)) {
                     // Write the current reading to CSV
@@ -1101,7 +1107,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             }
         }
 
-        if(service != null && service.isRunning())
+        if(isDataIndependentOfBluetoothConnectionEnabled || (service != null && service.isRunning()))
         {
             isDataAcquisitionEnabled = true;
         }
@@ -1142,7 +1148,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             myCSVWriter.closeLogCSVWriter();
         }
 
-        if(service == null || !service.isRunning())
+        if(isDataIndependentOfBluetoothConnectionEnabled || service == null || !service.isRunning())
         {
             isDataAcquisitionEnabled = false;
         }
