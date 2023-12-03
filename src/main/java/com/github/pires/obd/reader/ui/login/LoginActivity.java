@@ -1,5 +1,7 @@
 package com.github.pires.obd.reader.ui.login;
 
+import static androidx.constraintlayout.helper.widget.MotionEffect.TAG;
+
 import com.github.pires.obd.reader.activity.MainActivity;
 
 import androidx.annotation.NonNull;
@@ -12,13 +14,15 @@ import android.os.Bundle;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.util.Log;
 import android.widget.Button;
 import android.widget.Toast;
 
 import com.github.pires.obd.reader.R;
 import com.google.android.gms.auth.api.identity.BeginSignInRequest;
+import com.google.android.gms.auth.api.identity.Identity;
+import com.google.android.gms.auth.api.identity.SignInClient;
 import com.google.android.gms.auth.api.identity.SignInCredential;
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
@@ -39,9 +43,12 @@ public class LoginActivity extends AppCompatActivity {
     // https://github.com/shuvopodder/GoogleSignin-Android
 
     private FirebaseAuth mAuth;
-    private GoogleSignInClient googleSignInClient;
+    private SignInClient oneTapClient;
     private final static int RC_SIGN_IN = 123;
     Button button;
+
+    private static final int REQ_ONE_TAP = 2;  // Can be any integer unique to the Activity.
+    private boolean showOneTapUI = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,7 +78,28 @@ public class LoginActivity extends AppCompatActivity {
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        SignInCredential googleCredential = googleSignInClient.getSignInCredentialFromIntent(data);
+//        switch (requestCode) {
+//            case REQ_ONE_TAP:
+//                try {
+//                    SignInCredential credential = oneTapClient.getSignInCredentialFromIntent(data);
+//                    String idToken = credential.getGoogleIdToken();
+//                    if (idToken !=  null) {
+//                        // Got an ID token from Google. Use it to authenticate
+//                        // with Firebase.
+////                        Log.d(TAG, "Got ID token.");
+//                    }
+//                } catch (ApiException e) {
+//                    // ...
+//                }
+//                break;
+//        }
+
+        SignInCredential googleCredential = null;
+        try {
+            googleCredential = oneTapClient.getSignInCredentialFromIntent(data);
+        } catch (ApiException e) {
+            throw new RuntimeException(e);
+        }
         String idToken = googleCredential.getGoogleIdToken();
         if (idToken !=  null) {
             // Got an ID token from Google. Use it to authenticate
@@ -83,30 +111,18 @@ public class LoginActivity extends AppCompatActivity {
                         public void onComplete(@NonNull Task<AuthResult> task) {
                             if (task.isSuccessful()) {
                                 // Sign in success, update UI with the signed-in user's information
-//                                Log.d(TAG, "signInWithCredential:success");
+                                Log.d(TAG, "signInWithCredential:success");
                                 FirebaseUser user = mAuth.getCurrentUser();
 //                                updateUI(user);
                             } else {
                                 // If sign in fails, display a message to the user.
-//                                Log.w(TAG, "signInWithCredential:failure", task.getException());
+                                Log.w(TAG, "signInWithCredential:failure", task.getException());
 //                                updateUI(null);
+
+                                // TODO: getCurrentUser
                             }
                         }
                     });
-        }
-
-        // Result returned from launching the Intent from GoogleSignInApi.getSignInIntent(...);
-        if (requestCode == RC_SIGN_IN) {
-            Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-            try {
-                // Google Sign In was successful, authenticate with Firebase
-                GoogleSignInAccount account = task.getResult(ApiException.class);
-                firebaseAuthWithGoogle(account);
-            } catch (ApiException e) {
-                // Google Sign In failed, update UI appropriately
-                // ...
-                Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
         }
     }
 
@@ -119,11 +135,11 @@ public class LoginActivity extends AppCompatActivity {
                 .build();
 
         // Build a GoogleSignInClient with the options specified by gso.
-        googleSignInClient = GoogleSignIn.getClient(this, gso);
+        oneTapClient = Identity.getSignInClient(this); //GoogleSignIn.getClient(this, gso);
     }
     private void signIn() {
-        Intent signInIntent = googleSignInClient.getSignInIntent();
-        startActivityForResult(signInIntent, RC_SIGN_IN);
+//        Intent signInIntent = oneTapClient.getSignInIntent(new GetSignInIntentRequest);
+//        startActivityForResult(signInIntent, RC_SIGN_IN);
     }
 
     private void  firebaseAuthWithGoogle(GoogleSignInAccount account) {
@@ -144,7 +160,10 @@ public class LoginActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
+        // TODO: FirebaseAuth.getInstance().signOut();
+
         FirebaseUser user = mAuth.getCurrentUser();
+//        updateUI(currentUser);
         if(user!=null){
             Intent intent = new Intent(this, MainActivity.class);
             startActivity(intent);
