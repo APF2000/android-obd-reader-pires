@@ -50,18 +50,23 @@ public class LoginActivity extends AppCompatActivity {
     private static final int REQ_ONE_TAP = 2;  // Can be any integer unique to the Activity.
     private boolean showOneTapUI = true;
 
+//    @Override
+//    protected void onFinishInflate(Bundle savedInstanceState) {
+//        button.setOnClickListener(v -> signIn());
+//    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-//        setContentView(R.layout.activity_main);
+        setContentView(R.layout.login);
 
         FirebaseApp.initializeApp(this);
         mAuth = FirebaseAuth.getInstance();
         button = findViewById(R.id.google_button);
 
-        createRequest();
-
         button.setOnClickListener(v -> signIn());
+
+        createRequest();
 
         BeginSignInRequest signInRequest = BeginSignInRequest.builder()
                 .setGoogleIdTokenRequestOptions(BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
