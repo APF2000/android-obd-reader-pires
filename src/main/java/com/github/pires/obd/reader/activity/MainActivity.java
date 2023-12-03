@@ -198,6 +198,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 }, 1
         );
 
+        // https://stackoverflow.com/questions/6822319/what-to-use-instead-of-addpreferencesfromresource-in-a-preferenceactivity
+        // https://developer.android.com/reference/android/preference/PreferenceFragment.html
+        // https://developer.android.com/reference/android/preference/PreferenceActivity.html
         isDataIndependentOfBluetoothConnectionEnabled = prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, true);
 
         queue = Volley.newRequestQueue(this);
