@@ -4,30 +4,41 @@ import static androidx.constraintlayout.helper.widget.MotionEffect.TAG;
 
 import com.github.pires.obd.reader.activity.MainActivity;
 
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 
+import android.app.PendingIntent;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
 import com.github.pires.obd.reader.R;
 import com.google.android.gms.auth.api.identity.BeginSignInRequest;
+import com.google.android.gms.auth.api.identity.BeginSignInResult;
+import com.google.android.gms.auth.api.identity.GetSignInIntentRequest;
 import com.google.android.gms.auth.api.identity.Identity;
 import com.google.android.gms.auth.api.identity.SignInClient;
 import com.google.android.gms.auth.api.identity.SignInCredential;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.AuthCredential;
@@ -35,6 +46,8 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+
+import 	android.content.IntentSender;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -44,16 +57,21 @@ public class LoginActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
     private SignInClient oneTapClient;
+    private BeginSignInRequest signInRequest;
     private final static int RC_SIGN_IN = 123;
     Button button;
 
     private static final int REQ_ONE_TAP = 2;  // Can be any integer unique to the Activity.
     private boolean showOneTapUI = true;
 
-//    @Override
-//    protected void onFinishInflate(Bundle savedInstanceState) {
-//        button.setOnClickListener(v -> signIn());
-//    }
+    // https://developer.android.com/training/basics/intents/result?hl=pt-br
+    ActivityResultLauncher<String> mGetContent = registerForActivityResult(new ActivityResultContracts.GetContent(),
+            new ActivityResultCallback<Uri>() {
+                @Override
+                public void onActivityResult(Uri uri) {
+                    // Handle the returned Uri
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,11 +82,33 @@ public class LoginActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
         button = findViewById(R.id.google_button);
 
-        button.setOnClickListener(v -> signIn());
+//        Button selectButton = findViewById(R.id.select_button);
 
-        createRequest();
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Pass in the mime type you want to let the user select
+                // as the input
+                mGetContent.launch("image/*");
 
-        BeginSignInRequest signInRequest = BeginSignInRequest.builder()
+            }
+        });
+
+
+
+//        button.setOnClickListener(v -> signIn());
+
+//        createRequest();
+
+//        https://developers.google.com/identity/one-tap/android/get-saved-credentials?hl=pt-br
+//        setGoogleIdTokenRequestOptions()
+//        setNonce
+
+        oneTapClient = Identity.getSignInClient(this);
+        signInRequest = BeginSignInRequest.builder()
+                .setPasswordRequestOptions(BeginSignInRequest.PasswordRequestOptions.builder()
+                        .setSupported(true)
+                        .build())
                 .setGoogleIdTokenRequestOptions(BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
                         .setSupported(true)
                         // Your server's client ID, not your Android client ID.
@@ -76,29 +116,60 @@ public class LoginActivity extends AppCompatActivity {
                         // Only show accounts previously used to sign in.
                         .setFilterByAuthorizedAccounts(true)
                         .build())
+                // Automatically sign in when exactly one credential is retrieved.
+                .setAutoSelectEnabled(false) // chaged so that multiple accounts dont get mixed
                 .build();
+
+        oneTapClient.beginSignIn(signInRequest)
+                .addOnSuccessListener(this, new OnSuccessListener<BeginSignInResult>() {
+                    @Override
+                    public void onSuccess(BeginSignInResult result) {
+                        try {
+                            startIntentSenderForResult(
+                                    result.getPendingIntent().getIntentSender(), REQ_ONE_TAP,
+                                    null, 0, 0, 0);
+                        } catch (IntentSender.SendIntentException e) {
+                            Log.e(TAG, "Couldn't start One Tap UI: " + e.getLocalizedMessage());
+                        }
+                    }
+                })
+                .addOnFailureListener(this, new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        // No saved credentials found. Launch the One Tap sign-up flow, or
+                        // do nothing and continue presenting the signed-out UI.
+                        Log.d(TAG, e.getLocalizedMessage());
+                    }
+                });
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-//        switch (requestCode) {
-//            case REQ_ONE_TAP:
-//                try {
-//                    SignInCredential credential = oneTapClient.getSignInCredentialFromIntent(data);
-//                    String idToken = credential.getGoogleIdToken();
-//                    if (idToken !=  null) {
-//                        // Got an ID token from Google. Use it to authenticate
-//                        // with Firebase.
-////                        Log.d(TAG, "Got ID token.");
-//                    }
-//                } catch (ApiException e) {
-//                    // ...
-//                }
-//                break;
-//        }
+//        resultcode RESULT_CANCELED
 
+        switch (requestCode) {
+            case REQ_ONE_TAP:
+                try {
+                    SignInCredential credential = oneTapClient.getSignInCredentialFromIntent(data);
+                    String idToken = credential.getGoogleIdToken();
+                    String username = credential.getId();
+                    String password = credential.getPassword();
+                    if (idToken !=  null) {
+                        // Got an ID token from Google. Use it to authenticate
+                        // with your backend.
+                        Log.d(TAG, "Got ID token.");
+                    } else if (password != null) {
+                        // Got a saved username and password. Use them to authenticate
+                        // with your backend.
+                        Log.d(TAG, "Got password.");
+                    }
+                } catch (ApiException e) {
+                    // ...
+                }
+                break;
+        }
         SignInCredential googleCredential = null;
         try {
             googleCredential = oneTapClient.getSignInCredentialFromIntent(data);
@@ -106,6 +177,7 @@ public class LoginActivity extends AppCompatActivity {
             throw new RuntimeException(e);
         }
         String idToken = googleCredential.getGoogleIdToken();
+
         if (idToken !=  null) {
             // Got an ID token from Google. Use it to authenticate
             // with Firebase.
@@ -131,35 +203,17 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
-    //id get from firebase 1021172043401-sitm35ia0bopq6bnkvusqlfo98mbmc4b.apps.googleusercontent.com
-    private void createRequest() {
-        // Configure Google Sign In
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.web_client_id))
-                .requestEmail()
-                .build();
-
-        // Build a GoogleSignInClient with the options specified by gso.
-        oneTapClient = Identity.getSignInClient(this); //GoogleSignIn.getClient(this, gso);
-    }
-    private void signIn() {
-//        Intent signInIntent = oneTapClient.getSignInIntent(new GetSignInIntentRequest);
-//        startActivityForResult(signInIntent, RC_SIGN_IN);
-    }
-
-    private void  firebaseAuthWithGoogle(GoogleSignInAccount account) {
-        AuthCredential credential = GoogleAuthProvider.getCredential(account.getIdToken(), null);
-        mAuth.signInWithCredential(credential).addOnCompleteListener(this, task -> {
-            if(task.isSuccessful()) {
-                FirebaseUser user = mAuth.getCurrentUser();
-//                updateUI(user);
-                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                startActivity(intent);
-            } else {
-                Toast.makeText(this, "Sorry auth failed.", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
+//    //id get from firebase 1021172043401-sitm35ia0bopq6bnkvusqlfo98mbmc4b.apps.googleusercontent.com
+//    private void createRequest() {
+//        // Configure Google Sign In
+//        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+//                .requestIdToken(getString(R.string.web_client_id))
+//                .requestEmail()
+//                .build();
+//
+//        // Build a GoogleSignInClient with the options specified by gso.
+//        oneTapClient = Identity.getSignInClient(this); //GoogleSignIn.getClient(this, gso);
+//    }
 
     @Override
     protected void onStart() {
@@ -169,17 +223,17 @@ public class LoginActivity extends AppCompatActivity {
 
         FirebaseUser user = mAuth.getCurrentUser();
 //        updateUI(currentUser);
-        if(user!=null){
-            Intent intent = new Intent(this, MainActivity.class);
-            startActivity(intent);
-        }
+//        if(user!=null){
+//            Intent intent = new Intent(this, MainActivity.class);
+//            startActivity(intent);
+//        }
     }
 
     @Override
     public void onBackPressed() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Exit");
-        builder.setMessage("Are you want to close?");
+        builder.setMessage("Do you want to close?");
         builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
