@@ -109,6 +109,9 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation 'com.google.android.gms:play-services-auth:20.7.0'
 
+    // https://www.youtube.com/watch?v=YQ0fJUiOYbY
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+
     // https://stackoverflow.com/questions/68554294/androidexported-needs-to-be-explicitly-specified-for-activity-apps-targeting/68648841#68648841
 //    androidTestImplementation "androidx.fragment:fragment-testing"
 

@@ -6,7 +6,12 @@
     android:layout_height="match_parent"
     tools:context=".ui.login.LoginActivity">
 
-
+<!--    https://www.youtube.com/watch?v=YQ0fJUiOYbY-->
+<!--    <com.google.android.material.imageview.SHapeableImageView-->
+<!--        android:layout_width="150sp"-->
+<!--        android:layout_height="150sp"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"/>-->
     <Button
         android:id="@+id/google_button"
         android:layout_width="wrap_content"
