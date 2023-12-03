@@ -22,10 +22,10 @@
 <!--            android:title="@string/pref_upload_title" />-->
         <EditTextPreference
             android:defaultValue="http://www.example.com/obd/get_data.php"
-            android:dialogTitle="@string/pref_upload_url_title"
-            android:key="upload_url_preference"
+            android:dialogTitle="@string/pref_user_email"
+            android:key="user_email"
             android:summary="@string/pref_upload_url_summary"
-            android:title="@string/pref_upload_url_title" />
+            android:title="@string/pref_user_email" />
         <EditTextPreference
             android:defaultValue=""
             android:dialogTitle="@string/pref_vehicle_id_title"

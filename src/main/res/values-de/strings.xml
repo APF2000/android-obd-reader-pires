@@ -49,7 +49,7 @@
     <string name="pref_upload_summaryOn">Deaktiviere Datenupload per http</string>
     <string name="pref_upload_title">Aktiviere Datenupload</string>
     <string name="pref_upload_url_summary">Eine POST URL, die Echtzeitdaten akzeptiert</string>
-    <string name="pref_upload_url_title">Upload URL</string>
+    <string name="pref_user_email">Upload URL</string>
     <string name="title_pref_commands_summary">Wähle OBD Kommandos, die in Echtzeit angezeigt werden sollen</string>
     <string name="title_pref_commands_title">OBD Kommandos</string>
     <string name="pref_bluetooth_list_devices_summary">Liste gekoppelter Bluetoothgeräte</string>

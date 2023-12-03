@@ -123,6 +123,7 @@ import com.google.android.gms.location.SettingsClient;
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
     private float gravity[] = {0, 0, 0};
+    private String user_email = "";
     private boolean isDataAcquisitionEnabled = false;
     private boolean isDataIndependentOfBluetoothConnectionEnabled = true;
     JSONArray accAddRequests = new JSONArray();
@@ -189,6 +190,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     protected void onStart() {
         super.onStart();
         Log.d(TAG, "Entered onStart...");
+        user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
+        Log.d(TAG, "user email: " + user_email);
 
         ActivityCompat.requestPermissions( this,    new String[]{
                 Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -535,6 +538,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
 //                    isDataIndependentOfBluetoothConnectionEnabled = prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, false);
 
+                } else if (prefs.getBoolean(ConfigActivity.UPLOAD_URL_KEY, false)) {
+                    user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
+                    Map<String, String> temp = new HashMap<String, String>();
+                    temp.putAll(commandResult);
+
                 } else if (prefs.getBoolean(ConfigActivity.ENABLE_FULL_LOGGING_KEY, false)) {
                     // Write the current reading to CSV
                     final String vin = prefs.getString(ConfigActivity.VEHICLE_ID_KEY, "UNDEFINED_VIN");
@@ -761,6 +769,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
+        Log.d(TAG, "user email: " + user_email);
 
         Handler handler = new Handler();
         handler.postDelayed(new Runnable() {
