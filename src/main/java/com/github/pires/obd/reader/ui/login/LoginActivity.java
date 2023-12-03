@@ -1,56 +1,27 @@
 package com.github.pires.obd.reader.ui.login;
 
-import static android.content.ContentValues.TAG;
+import com.github.pires.obd.reader.activity.MainActivity;
 
-import android.app.Activity;
-
-import androidx.activity.result.ActivityResult;
-import androidx.activity.result.ActivityResultCallback;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.IntentSenderRequest;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProvider;
 
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentSender;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.os.PersistableBundle;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.util.Log;
-import android.view.KeyEvent;
-import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.github.pires.obd.reader.R;
-import com.github.pires.obd.reader.databinding.ActivityLoginBinding;
-import com.google.android.gms.auth.api.identity.BeginSignInRequest;
-import com.google.android.gms.auth.api.identity.BeginSignInResult;
-import com.google.android.gms.auth.api.identity.Identity;
-import com.google.android.gms.auth.api.identity.SignInClient;
-import com.google.android.gms.auth.api.identity.SignInCredential;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -60,6 +31,7 @@ public class LoginActivity extends AppCompatActivity {
 
 
 //https://developers.google.com/identity/one-tap/android/create-new-accounts
+    // https://github.com/shuvopodder/GoogleSignin-Android
 
     private FirebaseAuth mAuth;
     private GoogleSignInClient googleSignInClient;
@@ -71,6 +43,7 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 //        setContentView(R.layout.activity_main);
 
+        FirebaseApp.initializeApp(this);
         mAuth = FirebaseAuth.getInstance();
         button = findViewById(R.id.google_button);
 
@@ -102,7 +75,7 @@ public class LoginActivity extends AppCompatActivity {
     private void createRequest() {
         // Configure Google Sign In
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestIdToken(getString(R.string.web_client_id))
                 .requestEmail()
                 .build();
 
@@ -119,10 +92,10 @@ public class LoginActivity extends AppCompatActivity {
         mAuth.signInWithCredential(credential).addOnCompleteListener(this, task -> {
             if(task.isSuccessful()) {
                 FirebaseUser user = mAuth.getCurrentUser();
-                Intent intent = new Intent(getApplicationContext(), Home.class);
+                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
                 startActivity(intent);
             } else {
-                Toast.makeText(MainActivity.this, "Sorry auth failed.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Sorry auth failed.", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -133,14 +106,14 @@ public class LoginActivity extends AppCompatActivity {
 
         FirebaseUser user = mAuth.getCurrentUser();
         if(user!=null){
-            Intent intent = new Intent(this, Home.class);
+            Intent intent = new Intent(this, MainActivity.class);
             startActivity(intent);
         }
     }
 
     @Override
     public void onBackPressed() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Exit");
         builder.setMessage("Are you want to close?");
         builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
