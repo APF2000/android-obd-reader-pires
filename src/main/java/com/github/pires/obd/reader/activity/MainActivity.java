@@ -123,6 +123,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     private float gravity[] = {0, 0, 0};
     JSONArray accAddRequests = new JSONArray();
+    JSONArray obdAddRequests = new JSONArray();
+    JSONArray locationAddRequests = new JSONArray();
     GnssStatus.Callback mGnssStatusCallback;
     LocationManager mLocationManager;
     private float compass_last_measured_bearing = 0;
@@ -197,7 +199,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     }
 
     private void sendDataToLambda(JSONObject bodyJson){
-        String url = ""; //https://pntdpvkdsc.execute-api.us-east-1.amazonaws.com/default/app_data";
+        String url = "https://pntdpvkdsc.execute-api.us-east-1.amazonaws.com/default/app_data";
         StringRequest postRequest = new StringRequest(Request.Method.POST, url,
                 response -> {
                     // response
@@ -258,12 +260,39 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     {
         // send to aws
         try {
-//            JSONObject accData = new JSONObject();
-//            accData.put("data", accAddRequests);
-//            accData.put("method", "add_acceleration");
+            // acceleration
+            if(accAddRequests.length() > 0)
+            {
+                JSONObject accData = new JSONObject();
+                accData.put("data", accAddRequests);
+                accData.put("method", "add_acceleration");
 
-            sendDataToLambda(accAddRequests.getJSONObject(0));
-            Log.d(TAG, "sent data to AWS");
+                sendDataToLambda(accData);
+                Log.d(TAG, "sent acc data to AWS");
+            }
+
+            // obd
+            if(obdAddRequests.length() > 0)
+            {
+                JSONObject obdData = new JSONObject();
+                obdData.put("data", obdAddRequests);
+                obdData.put("method", "add_obd_info");
+
+                sendDataToLambda(obdData);
+                Log.d(TAG, "sent obd data to AWS");
+            }
+
+            // gps location
+            if(locationAddRequests.length() > 0)
+            {
+                JSONObject locationData = new JSONObject();
+                locationData.put("data", locationAddRequests);
+                locationData.put("method", "add_location");
+
+                sendDataToLambda(locationData);
+                Log.d(TAG, "sent location data to AWS");
+            }
+
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }finally{
@@ -609,6 +638,19 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         if (diffSeconds <= minSecondsBetweenData) return;
         resourceNameTolastDataUpdate.put(cmdName, currentTime);
+
+        JSONObject jsonObjObd = new JSONObject();
+        try {
+            jsonObjObd.put("timestamp", currentTime.toString());
+            jsonObjObd.put("name", cmdName);
+            jsonObjObd.put("result", cmdResult);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+
+        obdAddRequests.put(jsonObjObd);
+
+        // backup
 
         // https://stackoverflow.com/questions/10717838/how-to-create-json-format-data-in-android
         JSONArray jsonContent = new JSONArray();
@@ -1366,6 +1408,19 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         if (diffSeconds <= minSecondsBetweenData) return;
         lastUpdateTimeGPS = currentTime;
+
+        JSONObject jsonObjObd = new JSONObject();
+        try {
+            jsonObjObd.put("timestamp", currentTime.toString());
+            jsonObjObd.put("latitude", latitude);
+            jsonObjObd.put("longitude", longitude);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+
+        locationAddRequests.put(jsonObjObd);
+
+        // backup
 
         JSONArray jsonGPS = new JSONArray();
         jsonGPS.put(latitude);
