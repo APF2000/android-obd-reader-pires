@@ -124,7 +124,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     private float gravity[] = {0, 0, 0};
     private boolean isDataAcquisitionEnabled = false;
-    private boolean isDataIndependentOfBluetoothConnectionEnabled = false;
+    private boolean isDataIndependentOfBluetoothConnectionEnabled = true;
     JSONArray accAddRequests = new JSONArray();
     JSONArray obdAddRequests = new JSONArray();
     JSONArray locationAddRequests = new JSONArray();
@@ -198,7 +198,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 }, 1
         );
 
-        isDataIndependentOfBluetoothConnectionEnabled = prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, false);
+        isDataIndependentOfBluetoothConnectionEnabled = prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, true);
 
         queue = Volley.newRequestQueue(this);
     }
