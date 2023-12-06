@@ -24,6 +24,10 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.location.LocationProvider;
 import android.net.Uri;
+
+import android.os.AsyncTask;
+import android.os.Build;
+
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -47,12 +51,18 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+
+import androidx.annotation.RequiresApi;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.toolbox.StringRequest;
+
 import com.github.pires.obd.commands.ObdCommand;
 import com.github.pires.obd.commands.SpeedCommand;
 import com.github.pires.obd.commands.engine.RPMCommand;
@@ -79,7 +89,12 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 
 import java.text.SimpleDateFormat;
+
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
+
 import java.util.ArrayList;
+
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -103,6 +118,7 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 
 import org.json.JSONArray;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -119,8 +135,10 @@ import com.google.android.gms.location.SettingsClient;
 
 // Some code taken from https://github.com/barbeau/gpstest
 
+@RequiresApi(api = Build.VERSION_CODES.O)
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
+    SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
     private float gravity[] = {0, 0, 0};
     private String user_email = "";
@@ -129,6 +147,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     JSONArray accAddRequests = new JSONArray();
     JSONArray obdAddRequests = new JSONArray();
     JSONArray locationAddRequests = new JSONArray();
+
     GnssStatus.Callback mGnssStatusCallback;
     LocationManager mLocationManager;
     private float compass_last_measured_bearing = 0;
@@ -138,13 +157,15 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private float linear_acceleration[] = {0, 0, 0};
 
     private HashMap<String, Date> resourceNameTolastDataUpdate = new HashMap<String, Date>();
-//    private Date lastHeadingUpdate = new Date();
+    //    private Date lastHeadingUpdate = new Date();
     private Date lastOrientUpdate = new Date();
+    private Date lastRotationUpdate = new Date();
     private Date lastUpdateTimeAcceleration;
     private Date lastUpdateTimeGPS = new Date();
     private Date lastBearingUpdate = new Date();
 
-    private final long minSecondsBetweenData = 1;
+    private final long minMillisBetweenData = 50;
+
     private static final String TAG = MainActivity.class.getName();
     private static final int NO_BLUETOOTH_ID = 0;
     private static final int BLUETOOTH_DISABLED = 1;
@@ -184,7 +205,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     private TextView tvLocationDetails;
     private LinearLayout mainLayout;
-
 
     @Override
     protected void onStart() {
@@ -311,7 +331,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     }
 
-
     @InjectView(R.id.acceleration_text)
     private TextView acceleration;
     private final SensorEventListener accelerationListener = new SensorEventListener() {
@@ -366,13 +385,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
             if (lastUpdateTimeAcceleration == null) {
                 lastUpdateTimeAcceleration = new Date();
-                lastUpdateTimeAcceleration.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+                lastUpdateTimeAcceleration.setTime(currentTime.getTime() - 2000 * minMillisBetweenData);
             }
 
             long diffInMillis = currentTime.getTime() - lastUpdateTimeAcceleration.getTime();
-            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
-            if (diffSeconds <= minSecondsBetweenData) return;
+            if (diffInMillis <= minMillisBetweenData) return;
             lastUpdateTimeAcceleration = currentTime;
 
             JSONObject jsonObjAcc = new JSONObject();
@@ -397,7 +416,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             String accelerationString = jsonAcceleration.toString();
             Log.d("arthur", "Getting acceleration data: " + accelerationString);
             writeDataToFile("DELETEME_ACCELERATION.txt",
-                    currentTime.toString() + " " + accelerationString);
+                    fmt.format(currentTime) + " " + accelerationString);
 
             //updateTextView(acceleration, acc);
 
@@ -407,7 +426,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             // do nothing
         }
     };
-
 
 
     //    @InjectView(R.id.acceleration_text)
@@ -462,9 +480,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             Date lastUpdateTime = lastOrientUpdate;
 
             long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
-            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
-            if (diffSeconds <= minSecondsBetweenData) return;
+            if (diffInMillis <= minMillisBetweenData) return;
             lastOrientUpdate = currentTime;
 
             DecimalFormat df = new DecimalFormat("0.00");
@@ -478,7 +496,53 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             jsonContent.put(roll_string);
 
             Log.d("arthur", "Getting orientation data");
-            writeDataToFile("DELETEME_ORIENTATION.txt", currentTime.toString() + " " + jsonContent.toString());
+            writeDataToFile("DELETEME_ORIENTATION.txt", fmt.format(currentTime) + " " + jsonContent.toString());
+        }
+
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            // do nothing
+        }
+    };
+
+    private final SensorEventListener rotationListener = new SensorEventListener() {
+
+        public void onSensorChanged(SensorEvent event) {
+//            float x_sin = event.values[0]; // east
+//            float y_sin = event.values[1]; // north
+//            float z_sin = event.values[2]; // sky
+//            float cos_theta = event.values[3];
+//            float heading_accuracy = event.values[4];
+//
+//            float xyz_norm = (float) Math.sqrt(x_sin * x_sin + y_sin * y_sin + z_sin * z_sin);
+//
+//            float normal_x = x_sin / xyz_norm;
+//            float normal_y = y_sin / xyz_norm;
+//            float normal_z = z_sin / xyz_norm;
+//
+//            float sin_theta = (float) Math.sqrt(1 - cos_theta * cos_theta);
+//
+//            Date currentTime = Calendar.getInstance().getTime();
+//
+//            Date lastUpdateTime = lastRotationUpdate;
+//
+//            long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
+//            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//
+//            if (diffSeconds <= minSecondsBetweenData) return;
+//            lastRotationUpdate = currentTime;
+//
+//            DecimalFormat df = new DecimalFormat("0.00");
+////            String azimuth_string = df.format(azimuth);
+////            String pitch_string = df.format(pitch);
+////            String roll_string = df.format(roll);
+//
+//            JSONArray jsonContent = new JSONArray();
+////            jsonContent.put(azimuth_string);
+////            jsonContent.put(pitch_string);
+////            jsonContent.put(roll_string);
+//
+//            Log.d("arthur", "Getting rotation data");
+//            writeDataToFile("DELETEME_ROTATION.txt", currentTime.toString() + " " + jsonContent.toString());
         }
 
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
@@ -558,10 +622,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     };
     private Sensor orientSensor = null;
+    private Sensor rotationSensor = null;
     private Sensor accelerationSensor = null;
     private Sensor magneticFieldSensor = null;
     private Sensor gravitySensor = null;
-//    private Sensor headingSensor = null;
+    //    private Sensor headingSensor = null;
     private PowerManager.WakeLock wakeLock = null;
     private boolean preRequisites = true;
     private ServiceConnection serviceConn = new ServiceConnection() {
@@ -657,13 +722,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         Date lastUpdateTime = resourceNameTolastDataUpdate.get(cmdName);
         if (lastUpdateTime == null) {
             lastUpdateTime = new Date();
-            lastUpdateTime.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+            lastUpdateTime.setTime(currentTime.getTime() - 2000 * minMillisBetweenData);
         }
 
         long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
-        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
-        if (diffSeconds <= minSecondsBetweenData) return;
+        if (diffInMillis <= minMillisBetweenData) return;
         resourceNameTolastDataUpdate.put(cmdName, currentTime);
 
         JSONObject jsonObjObd = new JSONObject();
@@ -687,13 +752,14 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
 
         Log.d("arthur", "Getting data from OBD");
-        writeDataToFile("DELETEME.txt", currentTime.toString() + " " + jsonContent.toString());
+        writeDataToFile("DELETEME.txt", fmt.format(currentTime) + " " + jsonContent.toString());
 
     }
 
-    private void writeDataToFile(String fileName, String content)  {
+    @SuppressLint("NewApi")
+    private void writeDataToFile(String fileName, String content) {
 
-        if (!Environment.isExternalStorageManager()){
+        if (!Environment.isExternalStorageManager()) {
             Intent intent = new Intent();
             intent.setAction(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
             Uri uri = Uri.fromParts("package", this.getPackageName(), null);
@@ -715,7 +781,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             FileOutputStream writer = new FileOutputStream(file, true);
             writer.write(content.getBytes());
             writer.close();
-        }catch(IOException e){
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
@@ -736,7 +802,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     // for ActivityCompat#requestPermissions for more details.
                     return false;
                 }
-                mLocService.addGpsStatusListener(this);
+
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+//                    LocationManager.registerGnssStatusCallback(GnssStatus.Callback)
+//                }
+//                mLocService.addGpsStatusListener(this);
                 if (mLocService.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
 //                    gpsStatusTextView.setText(getString(R.string.status_gps_ready));
                     return true;
@@ -769,7 +839,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+      
         user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
         Log.d(TAG, "user email: " + user_email);
 
@@ -793,6 +863,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             orientSensor = sensors.get(0);
         else
             showDialog(NO_ORIENTATION_SENSOR);
+
+        sensors = sensorManager.getSensorList(Sensor.TYPE_ROTATION_VECTOR);
+        if (sensors.size() > 0)
+            rotationSensor = sensors.get(0);
+        else {
+            throw new RuntimeException();
+        }
 
         sensors = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER);
         if (sensors.size() > 0)
@@ -858,6 +935,37 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         final BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
         if (btAdapter != null && btAdapter.isEnabled() && !bluetoothDefaultIsEnable)
             btAdapter.disable();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            mLocationManager.registerGnssStatusCallback(mGnssStatusCallback);
+        }
+        mLocationManager.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER, 30000, 0, this
+        );
+
+        Log.d(TAG, "Entered onStart...");
+
+        ActivityCompat.requestPermissions(this, new String[]{
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.MANAGE_EXTERNAL_STORAGE
+                }, 1
+        );
+
+        queue = Volley.newRequestQueue(this);
     }
 
     @Override
@@ -955,13 +1063,14 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
                     if (lastBearingUpdate == null) {
                         lastBearingUpdate = new Date();
-                        lastBearingUpdate.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+                        lastBearingUpdate.setTime(currentTime.getTime() - 2000 * minMillisBetweenData);
                     }
 
                     long diffInMillis = currentTime.getTime() - lastBearingUpdate.getTime();
-                    long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//                    long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
-                    if (diffSeconds <= minSecondsBetweenData) return;
+                    if (diffInMillis <= minMillisBetweenData) return;
+
                     lastBearingUpdate = currentTime;
 
                     DecimalFormat df = new DecimalFormat("0.00");
@@ -972,8 +1081,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
                     String contentString = jsonContent.toString();
                     Log.d(TAG, "obd.pires.data: Getting bearing data: " + contentString);
-                    writeDataToFile("DELETEME_BEARING.txt", currentTime.toString() + " " + contentString);
-
+                    writeDataToFile("DELETEME_BEARING.txt", fmt.format(currentTime) + " " + contentString);
                 }
             }
         }
@@ -991,6 +1099,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         super.onResume();
         Log.d(TAG, "Resuming..");
         sensorManager.registerListener(orientListener, orientSensor,
+                SensorManager.SENSOR_DELAY_UI);
+        wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
+                "obdapp:debug");
+
+        sensorManager.registerListener(rotationListener, rotationSensor,
                 SensorManager.SENSOR_DELAY_UI);
         wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 "obdapp:debug");
@@ -1183,6 +1296,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 return build.create();
             case BLUETOOTH_DISABLED:
                 Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    throw new RuntimeException("bluetooth is disabled");
+                }
                 startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
                 return build.create();
             case NO_ORIENTATION_SENSOR:
@@ -1321,6 +1437,16 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     private synchronized void gpsStart() {
         if (!mGpsIsStarted && mLocProvider != null && mLocService != null && mLocService.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
             mLocService.requestLocationUpdates(mLocProvider.getName(), getGpsUpdatePeriod(prefs), getGpsDistanceUpdatePeriod(prefs), this);
             mGpsIsStarted = true;
         } else {
@@ -1445,13 +1571,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         if (lastUpdateTimeGPS == null) {
             lastUpdateTimeGPS = new Date();
-            lastUpdateTimeGPS.setTime(currentTime.getTime() - 2000 * minSecondsBetweenData);
+            lastUpdateTimeGPS.setTime(currentTime.getTime() - 2000 * minMillisBetweenData);
         }
 
         long diffInMillis = currentTime.getTime() - lastUpdateTimeGPS.getTime();
-        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+//        long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
-        if (diffSeconds <= minSecondsBetweenData) return;
+        if (diffInMillis <= minMillisBetweenData) return;
         lastUpdateTimeGPS = currentTime;
 
         JSONObject jsonObjObd = new JSONObject();
@@ -1473,7 +1599,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         String gpsString = jsonGPS.toString();
         Log.d(TAG, "obd.pires.data: Getting GPS data: " + gpsString);
-        writeDataToFile("DELETEME_GPS.txt", currentTime.toString() + " " + gpsString);
+        writeDataToFile("DELETEME_GPS.txt", fmt.format(currentTime) + " " + gpsString);
 
     }
 
@@ -1526,6 +1652,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     protected void onStop() {
         if (toast != null) {
             toast.cancel();
+        }
+
+        mLocationManager.removeUpdates(this);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            mLocationManager.unregisterGnssStatusCallback(
+                    mGnssStatusCallback
+            );
         }
         super.onStop();
     }

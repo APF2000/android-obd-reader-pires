@@ -13,7 +13,6 @@ repositories {
     mavenCentral()
 }
 
-apply plugin: 'com.android.application'
 
 repositories {
     mavenLocal()
@@ -21,38 +20,3 @@ repositories {
     google()
 }
 
-android {
-    compileSdkVersion 30
-    // android.buildToolsVersion "30.0.3"
-    defaultConfig {
-        minSdkVersion 14
-        targetSdkVersion 30
-        applicationId 'com.github.pires.obd.reader'
-    }
-
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
-    buildToolsVersion '30.0.3'
-    namespace 'com.github.pires.obd.reader'
-    lint {
-        abortOnError false
-    }
-}
-
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.0.0'
-    implementation 'com.github.pires:obd-java-api:1.0-RC16'
-    implementation 'org.roboguice:roboguice:3.+'
-//    implementation files('C:\\Program Files (x86)\\MySQL\\Connector J 8.0\\mysql-connector-j-8.0.33.jar')
-    compileOnly 'org.roboguice:roboblender:3.+'
-    implementation 'com.squareup.retrofit:retrofit:1.9.0'
-    implementation files('libs/mysql-connector-j-8.0.33.jar')
-    implementation 'com.android.volley:volley:1.2.1'
-
-    implementation 'com.google.android.gms:play-services-location:21.0.1'
-}
