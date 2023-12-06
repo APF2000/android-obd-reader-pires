@@ -63,7 +63,7 @@
     <string name="pref_upload_title">Enable Data Upload</string>
     <string name="pref_upload_summaryOff">Enable http data upload</string>
     <string name="pref_upload_summaryOn">Disable http data upload</string>
-    <string name="pref_upload_url_title">Upload URL</string>
+    <string name="pref_user_email">Upload URL</string>
     <string name="pref_upload_url_summary">POST URL that will accept real-time data</string>
     <string name="pref_vehicle_id_title">Vehicle ID</string>
     <string name="pref_vehicle_id_summary">Optional unique id of this vehicle, used with uploaded data</string>

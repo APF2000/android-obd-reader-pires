@@ -1,10 +1,13 @@
 package com.github.pires.obd.reader.activity;
 
+import static android.app.PendingIntent.getActivity;
+
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
@@ -13,6 +16,8 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.preference.CheckBoxPreference;
+import android.preference.Preference;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
@@ -121,6 +126,41 @@ public class TroubleCodesActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
+
+//        Context context = getActivity();
+//        SharedPreferences sharedPref = context.getSharedPreferences(
+//                getString(R.string.pref_upload_title), Context.MODE_PRIVATE);
+////        checkbox_http_enable
+//
+////        final Preference otherpref = (Preference) findPreference("otherpref");
+////        final Preference pref = (Preference) findPreference("checkbox");
+//
+//        final CheckBoxPreference checkboxPref = (CheckBoxPreference) getPreferenceManager().findPreference("checkboxPref");
+//
+//        checkboxPref.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+//            public boolean onPreferenceChange(Preference preference, Object newValue) {
+//                Log.d("MyApp", "Pref " + preference.getKey() + " changed to " + newValue.toString());
+//                return true;
+//            }
+//        });
+//
+//        pPref.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+//
+//            public boolean onPreferenceClick(Preference preference) {
+//
+//                Toast.makeText(getBaseContext(), "Some text", Toast.LENGTH_SHORT).show();
+//                return true;
+//            }
+//        });
+//
+//        otherpref.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+//
+//            public boolean onPreferenceClick(Preference preference) {
+//
+//                Toast.makeText(getBaseContext(), "Other text", Toast.LENGTH_SHORT).show();
+//                return true;
+//            }
+//        });
 
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
