@@ -1,68 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:versionCode="13"
     android:versionName="2.0-RC2">
 
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
-
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 <!--    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />-->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-
     <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
-    <uses-permission android:name="android.permission.READ_LOGS" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+<!--    <uses-permission android:name="android.permission.READ_LOGS" />-->
+<!--    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />-->
 
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_btcar"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"
+        android:theme="@style/AppTheme">
+
+<!--        https://stackoverflow.com/questions/70119259/androidexported-needs-to-be-explicitly-specified-for-activity-even-though-i-->
         <activity
-            android:name="com.github.pires.obd.reader.activity.MainActivity"
+            tools:node="merge"
+            android:exported="true"
+            android:name=".ui.login.LoginActivity"
+            android:theme="@style/Theme.AppCompat.Light"
             android:configChanges="orientation|screenSize"
+            android:label="@string/title_activity_login"
             android:launchMode="singleInstance"
-            android:label="@string/app_name"
             android:requestLegacyExternalStorage="true"
-            android:exported="true">
+            android:clearTaskOnLaunch="true"
+            android:noHistory="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
-            android:name="com.github.pires.obd.reader.activity.ConfigActivity"
-            android:launchMode="singleInstance"
-            android:label="@string/app_name"></activity>
+            android:name=".activity.MainActivity"
+            android:exported="false"
+            android:label="@string/app_name"/>
         <activity
-            android:name="com.github.pires.obd.reader.activity.TroubleCodesActivity"
+            android:name=".activity.ConfigActivity"
+            android:label="@string/app_name"
             android:launchMode="singleInstance"
-            android:label="@string/title_activity_trouble_codes"></activity>
-
+            android:exported="false"/>
         <activity
-            android:name="com.github.pires.obd.reader.activity.TripListActivity"
+            android:name=".activity.TroubleCodesActivity"
+            android:label="@string/title_activity_trouble_codes"
             android:launchMode="singleInstance"
-            android:label="@string/title_activity_trips_list"></activity>
+            android:exported="false"/>
+        <activity
+            android:name=".activity.TripListActivity"
+            android:label="@string/title_activity_trips_list"
+            android:launchMode="singleInstance"
+            android:exported="false"/>
 
         <service
-            android:name="com.github.pires.obd.reader.io.ObdGatewayService"
-            android:launchMode="singleInstance"
-            android:exported="false" />
+            android:name=".io.ObdGatewayService"
+            android:exported="false"
+            android:launchMode="singleInstance" />
         <service
-            android:name="com.github.pires.obd.reader.io.MockObdGatewayService"
-            android:launchMode="singleInstance"
-            android:exported="false" />
+            android:name=".io.MockObdGatewayService"
+            android:exported="false"
+            android:launchMode="singleInstance" />
+
+        <!--https://issuetracker.google.com/issues/242439160?pli=1-->
+        <receiver
+            android:name="com.google.android.gms.measurement.AppMeasurementReceiver"
+            android:enabled="true"
+            android:exported="false"
+            tools:node="replace"
+            tools:overrideLibrary="com.google.android.gms.measurement">
+            <intent-filter>
+                <action android:name="com.google.android.gms.measurement.UPLOAD"/>
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

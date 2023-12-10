@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="web_client_id" translatable="false">1079573173802-e19q0i1a1m9dfr074eukvgekoea5f8so.apps.googleusercontent.com</string>
+<!--    <string name="web_client_id" translatable="false">1079573173802-e19q0i1a1m9dfr074eukvgekoea5f8so.apps.googleusercontent.com</string>-->
+    <string name="web_client_id" translatable="false">1079573173802-a2jeirf4rlchg0864m57fb4g04lgeieo.apps.googleusercontent.com</string>
     <string name="app_name" translatable="false">OBD-II Reader</string>
     <string name="action_settings">Settings</string>
     <string name="action_clear_codes">Clear Codes</string>
@@ -107,4 +108,14 @@
     <string name="pref_dev_email_title">Developer Email</string>
     <string name="pref_dev_email_summary">Logs will be emailed to this address</string>
     <string name="text_noerrors">There were no errors found.!</string>
+    <string name="title_activity_login">LoginActivity</string>
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign in with Google</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="welcome">"Welcome !"</string>
+    <string name="invalid_username">Not a valid username</string>
+    <string name="invalid_password">Password must be >5 characters</string>
+    <string name="login_failed">"Login failed"</string>
+    <string name="signing_with_google">Signing with Google!</string>
 </resources>

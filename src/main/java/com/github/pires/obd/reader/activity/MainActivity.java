@@ -122,7 +122,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationAvailability;
 import com.google.android.gms.location.LocationCallback;
@@ -140,6 +139,9 @@ import com.google.android.gms.location.SettingsClient;
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
     SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
+    private String userEmail;
+    private String userId;
+    private String userToken;
     private float gravity[] = {0, 0, 0};
     private String user_email = "";
     private boolean isDataAcquisitionEnabled = false;
@@ -225,6 +227,31 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         // https://developer.android.com/reference/android/preference/PreferenceFragment.html
         // https://developer.android.com/reference/android/preference/PreferenceActivity.html
         isDataIndependentOfBluetoothConnectionEnabled = prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, true);
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            mLocationManager.registerGnssStatusCallback(mGnssStatusCallback);
+        }
+        mLocationManager.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER, 30000, 0, this
+        );
+
+        Log.d(TAG, "Entered onStart...");
+
+        ActivityCompat.requestPermissions(this, new String[]{
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.MANAGE_EXTERNAL_STORAGE
+                }, 1
+        );
 
         queue = Volley.newRequestQueue(this);
     }
@@ -328,6 +355,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             throw new RuntimeException(e);
         }finally{
             accAddRequests = new JSONArray();
+            obdAddRequests = new JSONArray();
+            locationAddRequests = new JSONArray();
         }
     }
 
@@ -396,7 +425,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
             JSONObject jsonObjAcc = new JSONObject();
             try {
-                jsonObjAcc.put("timestamp", currentTime.toString());
+                jsonObjAcc.put("timestamp", fmt.format(currentTime));
 
                 jsonObjAcc.put("acceleration_x", acc_x_string);
                 jsonObjAcc.put("acceleration_y", acc_y_string);
@@ -405,6 +434,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 jsonObjAcc.put("gravity_x", gravity_x_string);
                 jsonObjAcc.put("gravity_y", gravity_y_string);
                 jsonObjAcc.put("gravity_z", gravity_z_string);
+                jsonObjAcc.put("user_token", userEmail);
             } catch (JSONException e) {
                 throw new RuntimeException(e);
             }
@@ -733,9 +763,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         JSONObject jsonObjObd = new JSONObject();
         try {
-            jsonObjObd.put("timestamp", currentTime.toString());
+            jsonObjObd.put("timestamp", fmt.format(currentTime));
             jsonObjObd.put("name", cmdName);
             jsonObjObd.put("result", cmdResult);
+            jsonObjObd.put("user_token", userEmail);
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
@@ -839,7 +870,26 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-      
+
+        if (savedInstanceState == null) {
+            Bundle extras = getIntent().getExtras();
+            if(extras == null) {
+                userEmail = null;
+            } else {
+                userEmail = extras.getString("userEmail");
+            }
+        } else {
+            userEmail = (String) savedInstanceState.getSerializable("userEmail");
+        }
+
+        mLocationManager =
+                (LocationManager) getSystemService(LOCATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            mGnssStatusCallback = new GnssStatus.Callback() {
+                // TODO: add your code here!
+            };
+        }
+
         user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
         Log.d(TAG, "user email: " + user_email);
 
@@ -933,39 +983,20 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         endTrip();
 
         final BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (btAdapter != null && btAdapter.isEnabled() && !bluetoothDefaultIsEnable)
+        if (btAdapter != null && btAdapter.isEnabled() && !bluetoothDefaultIsEnable) {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
+
             btAdapter.disable();
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            mLocationManager.registerGnssStatusCallback(mGnssStatusCallback);
-        }
-        mLocationManager.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER, 30000, 0, this
-        );
-
-        Log.d(TAG, "Entered onStart...");
-
-        ActivityCompat.requestPermissions(this, new String[]{
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.MANAGE_EXTERNAL_STORAGE
-                }, 1
-        );
-
-        queue = Volley.newRequestQueue(this);
     }
 
     @Override
@@ -1070,7 +1101,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 //                    long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
                     if (diffInMillis <= minMillisBetweenData) return;
-
                     lastBearingUpdate = currentTime;
 
                     DecimalFormat df = new DecimalFormat("0.00");
@@ -1146,6 +1176,16 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         preRequisites = btAdapter != null && btAdapter.isEnabled();
         if (!preRequisites && prefs.getBoolean(ConfigActivity.ENABLE_BT_KEY, false)) {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
             preRequisites = btAdapter != null && btAdapter.enable();
         }
 
@@ -1580,16 +1620,17 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         if (diffInMillis <= minMillisBetweenData) return;
         lastUpdateTimeGPS = currentTime;
 
-        JSONObject jsonObjObd = new JSONObject();
+        JSONObject jsonObjLocation = new JSONObject();
         try {
-            jsonObjObd.put("timestamp", currentTime.toString());
-            jsonObjObd.put("latitude", latitude);
-            jsonObjObd.put("longitude", longitude);
+            jsonObjLocation.put("timestamp", fmt.format(currentTime));
+            jsonObjLocation.put("latitude", latitude);
+            jsonObjLocation.put("longitude", longitude);
+            jsonObjLocation.put("user_token", userEmail);
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
 
-        locationAddRequests.put(jsonObjObd);
+        locationAddRequests.put(jsonObjLocation);
 
         // backup
 

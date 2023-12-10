@@ -12,9 +12,18 @@
         -->
     </style>
 
-    <!-- Application theme. -->
-    <style name="AppTheme" parent="AppBaseTheme">
-        <!-- All customizations that are NOT specific to a particular API-level can go here. -->
+    <style name="roundedImageView">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
     </style>
+
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight">
+
+    </style>
+
+<!--    &lt;!&ndash; Application theme. &ndash;&gt;-->
+<!--    <style name="AppTheme" parent="AppBaseTheme">-->
+<!--        &lt;!&ndash; All customizations that are NOT specific to a particular API-level can go here. &ndash;&gt;-->
+<!--    </style>-->
 
 </resources>
