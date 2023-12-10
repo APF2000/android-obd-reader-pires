@@ -34,6 +34,10 @@ public class LoginActivity extends AppCompatActivity {
     private String authToken;
     private static final int RC_SIGN_IN = 123; // Pode ser qualquer número inteiro único
 
+    private String userEmail;
+    private String userId;
+    private String userToken;
+
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -44,6 +48,10 @@ public class LoginActivity extends AppCompatActivity {
 //            try {
             // Google Sign In was successful, authenticate with Firebase
             GoogleSignInAccount account = task.getResult();
+            userEmail = account.getEmail();
+            userId = account.getId();
+            userToken = account.getIdToken();
+
             if (account != null) {
                 firebaseAuthWithGoogle(account.getIdToken());
             }
@@ -65,7 +73,11 @@ public class LoginActivity extends AppCompatActivity {
                             Log.d(TAG, "signInWithCredential:success");
                             FirebaseUser user = mAuth.getCurrentUser();
                             if (user != null) {
-                                String uid = user.getUid();
+//                                userId = user.getUid();
+                                userEmail = user.getEmail();
+                                userId = user.getUid();
+//                                userToken = user.getIdToken();
+
                                 authToken = user.getIdToken(false).getResult().getToken();
                                 startMainActivity();
                             }
@@ -131,6 +143,7 @@ public class LoginActivity extends AppCompatActivity {
     private void startMainActivity() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra("authToken", authToken);
+        intent.putExtra("userEmail", userEmail);
         startActivity(intent);
         finish();
     }

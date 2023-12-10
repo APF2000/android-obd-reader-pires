@@ -139,7 +139,9 @@ import com.google.android.gms.location.SettingsClient;
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
     SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
-    SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    private String userEmail;
+    private String userId;
+    private String userToken;
     private float gravity[] = {0, 0, 0};
     private String user_email = "";
     private boolean isDataAcquisitionEnabled = false;
@@ -225,6 +227,31 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         // https://developer.android.com/reference/android/preference/PreferenceFragment.html
         // https://developer.android.com/reference/android/preference/PreferenceActivity.html
         isDataIndependentOfBluetoothConnectionEnabled = prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, true);
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            mLocationManager.registerGnssStatusCallback(mGnssStatusCallback);
+        }
+        mLocationManager.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER, 30000, 0, this
+        );
+
+        Log.d(TAG, "Entered onStart...");
+
+        ActivityCompat.requestPermissions(this, new String[]{
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.MANAGE_EXTERNAL_STORAGE
+                }, 1
+        );
 
         queue = Volley.newRequestQueue(this);
     }
@@ -328,6 +355,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             throw new RuntimeException(e);
         }finally{
             accAddRequests = new JSONArray();
+            obdAddRequests = new JSONArray();
+            locationAddRequests = new JSONArray();
         }
     }
 
@@ -405,6 +434,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 jsonObjAcc.put("gravity_x", gravity_x_string);
                 jsonObjAcc.put("gravity_y", gravity_y_string);
                 jsonObjAcc.put("gravity_z", gravity_z_string);
+                jsonObjAcc.put("user_token", userEmail);
             } catch (JSONException e) {
                 throw new RuntimeException(e);
             }
@@ -736,6 +766,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             jsonObjObd.put("timestamp", fmt.format(currentTime));
             jsonObjObd.put("name", cmdName);
             jsonObjObd.put("result", cmdResult);
+            jsonObjObd.put("user_token", userEmail);
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
@@ -839,6 +870,17 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (savedInstanceState == null) {
+            Bundle extras = getIntent().getExtras();
+            if(extras == null) {
+                userEmail = null;
+            } else {
+                userEmail = extras.getString("userEmail");
+            }
+        } else {
+            userEmail = (String) savedInstanceState.getSerializable("userEmail");
+        }
 
         mLocationManager =
                 (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -955,68 +997,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
             btAdapter.disable();
         }
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            mLocationManager.registerGnssStatusCallback(mGnssStatusCallback);
-        }
-        mLocationManager.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER, 30000, 0, this
-        );
-
-        Log.d(TAG, "Entered onStart...");
-
-        ActivityCompat.requestPermissions(this, new String[]{
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.MANAGE_EXTERNAL_STORAGE
-                }, 1
-        );
-
-        queue = Volley.newRequestQueue(this);
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            mLocationManager.registerGnssStatusCallback(mGnssStatusCallback);
-        }
-        mLocationManager.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER, 30000, 0, this
-        );
-
-        Log.d(TAG, "Entered onStart...");
-
-        ActivityCompat.requestPermissions(this, new String[]{
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.MANAGE_EXTERNAL_STORAGE
-                }, 1
-        );
-
-        queue = Volley.newRequestQueue(this);
     }
 
     @Override
@@ -1640,16 +1620,17 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         if (diffInMillis <= minMillisBetweenData) return;
         lastUpdateTimeGPS = currentTime;
 
-        JSONObject jsonObjObd = new JSONObject();
+        JSONObject jsonObjLocation = new JSONObject();
         try {
-            jsonObjObd.put("timestamp", fmt.format(currentTime));
-            jsonObjObd.put("latitude", latitude);
-            jsonObjObd.put("longitude", longitude);
+            jsonObjLocation.put("timestamp", fmt.format(currentTime));
+            jsonObjLocation.put("latitude", latitude);
+            jsonObjLocation.put("longitude", longitude);
+            jsonObjLocation.put("user_token", userEmail);
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
 
-        locationAddRequests.put(jsonObjObd);
+        locationAddRequests.put(jsonObjLocation);
 
         // backup
 
