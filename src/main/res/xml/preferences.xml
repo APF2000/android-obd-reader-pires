@@ -10,12 +10,22 @@
             android:summaryOff="@string/pref_upload_summaryOff"
             android:summaryOn="@string/pref_upload_summaryOn"
             android:title="@string/pref_upload_title" />
+<!--        <CheckBox android:id="@+id/checkbox_http_enable"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:dialogTitle="@string/pref_upload_title"-->
+<!--            android:onClick="onCheckboxClicked"-->
+<!--            android:defaultValue="false"-->
+<!--            android:key="upload_data_preference"-->
+<!--            android:summaryOff="@string/pref_upload_summaryOff"-->
+<!--            android:summaryOn="@string/pref_upload_summaryOn"-->
+<!--            android:title="@string/pref_upload_title" />-->
         <EditTextPreference
             android:defaultValue="http://www.example.com/obd/get_data.php"
-            android:dialogTitle="@string/pref_upload_url_title"
-            android:key="upload_url_preference"
+            android:dialogTitle="@string/pref_user_email"
+            android:key="user_email"
             android:summary="@string/pref_upload_url_summary"
-            android:title="@string/pref_upload_url_title" />
+            android:title="@string/pref_user_email" />
         <EditTextPreference
             android:defaultValue=""
             android:dialogTitle="@string/pref_vehicle_id_title"

@@ -24,14 +24,17 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.location.LocationProvider;
 import android.net.Uri;
+
 import android.os.AsyncTask;
 import android.os.Build;
+
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.preference.Preference;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.Gravity;
@@ -48,9 +51,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import com.android.volley.AuthFailureError;
+import com.android.volley.Request;
+import com.android.volley.toolbox.StringRequest;
 
 import com.github.pires.obd.commands.ObdCommand;
 import com.github.pires.obd.commands.SpeedCommand;
@@ -66,7 +77,6 @@ import com.github.pires.obd.reader.io.ObdCommandJob;
 import com.github.pires.obd.reader.io.ObdGatewayService;
 import com.github.pires.obd.reader.io.ObdProgressListener;
 import com.github.pires.obd.reader.net.ObdReading;
-import com.github.pires.obd.reader.net.ObdService;
 import com.github.pires.obd.reader.trips.TripLog;
 import com.github.pires.obd.reader.trips.TripRecord;
 import com.google.inject.Inject;
@@ -79,15 +89,18 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 
 import java.text.SimpleDateFormat;
+
+import java.util.ArrayList;
+
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import retrofit.RestAdapter;
-import retrofit.RetrofitError;
-import retrofit.client.Response;
+//import retrofit.RestAdapter;
+//import retrofit.RetrofitError;
+//import retrofit.client.Response;
 import roboguice.RoboGuice;
 import roboguice.activity.RoboActivity;
 import roboguice.inject.ContentView;
@@ -96,11 +109,15 @@ import roboguice.inject.InjectView;
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsDistanceUpdatePeriod;
 import static com.github.pires.obd.reader.activity.ConfigActivity.getGpsUpdatePeriod;
 
+import java.util.concurrent.TimeUnit;
+
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 
 import org.json.JSONArray;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationAvailability;
@@ -118,9 +135,14 @@ import com.google.android.gms.location.SettingsClient;
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
 
-
     SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-
+    private float gravity[] = {0, 0, 0};
+    private String user_email = "";
+    private boolean isDataAcquisitionEnabled = false;
+    private boolean isDataIndependentOfBluetoothConnectionEnabled = true;
+    JSONArray accAddRequests = new JSONArray();
+    JSONArray obdAddRequests = new JSONArray();
+    JSONArray locationAddRequests = new JSONArray();
     GnssStatus.Callback mGnssStatusCallback;
     LocationManager mLocationManager;
     private float compass_last_measured_bearing = 0;
@@ -138,6 +160,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private Date lastBearingUpdate = new Date();
 
     private final long minMillisBetweenData = 50;
+    private final long minSecondsBetweenData = 1;
     private static final String TAG = MainActivity.class.getName();
     private static final int NO_BLUETOOTH_ID = 0;
     private static final int BLUETOOTH_DISABLED = 1;
@@ -178,10 +201,140 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private TextView tvLocationDetails;
     private LinearLayout mainLayout;
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.d(TAG, "Entered onStart...");
+        user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
+        Log.d(TAG, "user email: " + user_email);
+
+        ActivityCompat.requestPermissions( this,    new String[]{
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.MANAGE_EXTERNAL_STORAGE,
+                Manifest.permission.BLUETOOTH,
+                Manifest.permission.BLUETOOTH_ADMIN
+                }, 1
+        );
+
+        // https://stackoverflow.com/questions/6822319/what-to-use-instead-of-addpreferencesfromresource-in-a-preferenceactivity
+        // https://developer.android.com/reference/android/preference/PreferenceFragment.html
+        // https://developer.android.com/reference/android/preference/PreferenceActivity.html
+        isDataIndependentOfBluetoothConnectionEnabled = prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, true);
+
+        queue = Volley.newRequestQueue(this);
+    }
+
+    private void sendDataToLambda(JSONObject bodyJson){
+        String url = "https://pntdpvkdsc.execute-api.us-east-1.amazonaws.com/default/app_data";
+        StringRequest postRequest = new StringRequest(Request.Method.POST, url,
+                response -> {
+                    // response
+                    Log.d("Response", response);
+                },
+                error -> {
+                    // error
+                    Log.d("Error.Response", error.toString());
+                }
+        ) {
+            @Override
+            public byte[] getBody() throws AuthFailureError {
+
+                String body_str = bodyJson.toString();
+
+                return body_str.getBytes();
+            }
+
+            @Override
+            public String getBodyContentType()
+            {
+                return "application/json";
+            }
+        };
+        queue.add(postRequest);
+    }
+
+    private void getDataFromLambda(JSONObject bodyJson){
+        String url = "https://pntdpvkdsc.execute-api.us-east-1.amazonaws.com/default/app_data";
+        StringRequest getRequest = new StringRequest(Request.Method.GET, url,
+                response -> {
+                    // response
+                    Log.d("Response", response);
+                },
+                error -> {
+                    // error
+                    Log.d("Error.Response", error.toString());
+                }
+        ) {
+            @Override
+            public byte[] getBody() throws AuthFailureError {
+
+                String body_str = bodyJson.toString();
+
+                return body_str.getBytes();
+            }
+
+            @Override
+            public String getBodyContentType()
+            {
+                return "application/json";
+            }
+        };
+        queue.add(getRequest);
+    }
+
+    void sendDataToAws()
+    {
+        // send to aws
+        try {
+            // acceleration
+            if(accAddRequests.length() > 0)
+            {
+                JSONObject accData = new JSONObject();
+                accData.put("data", accAddRequests);
+                accData.put("method", "add_acceleration");
+
+                sendDataToLambda(accData);
+                Log.d(TAG, "sent acc data to AWS");
+            }
+
+            // obd
+            if(obdAddRequests.length() > 0)
+            {
+                JSONObject obdData = new JSONObject();
+                obdData.put("data", obdAddRequests);
+                obdData.put("method", "add_obd_info");
+
+                sendDataToLambda(obdData);
+                Log.d(TAG, "sent obd data to AWS");
+            }
+
+            // gps location
+            if(locationAddRequests.length() > 0)
+            {
+                JSONObject locationData = new JSONObject();
+                locationData.put("data", locationAddRequests);
+                locationData.put("method", "add_location");
+
+                sendDataToLambda(locationData);
+                Log.d(TAG, "sent location data to AWS");
+            }
+
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }finally{
+            accAddRequests = new JSONArray();
+        }
+    }
+
+
+>>>>>>> master
     @InjectView(R.id.acceleration_text)
     private TextView acceleration;
     private final SensorEventListener accelerationListener = new SensorEventListener() {
-        public void onSensorChanged(SensorEvent event) {
+        public void onSensorChanged(SensorEvent event)
+        {
+            if(!isDataAcquisitionEnabled) return;
+
             // alpha is calculated as t / (t + dT)
             // with t, the low-pass filter's time-constant
             // and dT, the event delivery rate
@@ -213,6 +366,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
             String gravity_val_string = df.format(gravity_val);
 
+
             JSONArray jsonAcceleration = new JSONArray();
             jsonAcceleration.put(acc_x_string);
             jsonAcceleration.put(acc_y_string);
@@ -236,6 +390,25 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
             if (diffInMillis <= minMillisBetweenData) return;
             lastUpdateTimeAcceleration = currentTime;
+
+            JSONObject jsonObjAcc = new JSONObject();
+            try {
+                jsonObjAcc.put("timestamp", fmt.format(currentTime));
+
+                jsonObjAcc.put("acceleration_x", acc_x_string);
+                jsonObjAcc.put("acceleration_y", acc_y_string);
+                jsonObjAcc.put("acceleration_z", acc_z_string);
+
+                jsonObjAcc.put("gravity_x", gravity_x_string);
+                jsonObjAcc.put("gravity_y", gravity_y_string);
+                jsonObjAcc.put("gravity_z", gravity_z_string);
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+
+            accAddRequests.put(jsonObjAcc);
+
+            // backup
 
             String accelerationString = jsonAcceleration.toString();
             Log.d("arthur", "Getting acceleration data: " + accelerationString);
@@ -266,44 +439,15 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     };
 
-//    private final SensorEventListener headingListener = new SensorEventListener() {
-//        public void onSensorChanged(SensorEvent event) {
-//            float heading = event.values[0];
-//            float accuracy = event.values[1];
-//
-//            Date currentTime = Calendar.getInstance().getTime();
-//
-//            Date lastUpdateTime = lastHeadingUpdate;
-//
-//            long diffInMillis = currentTime.getTime() - lastUpdateTime.getTime();
-//            long diffSeconds = TimeUnit.SECONDS.convert(diffInMillis, TimeUnit.MILLISECONDS);
-//
-//            if (diffSeconds <= minSecondsBetweenData) return;
-//            lastHeadingUpdate = currentTime;
-//
-//            DecimalFormat df = new DecimalFormat("0.00");
-//            String heading_string = df.format(heading);
-//            String accuracy_string = df.format(accuracy);
-//
-//            JSONArray jsonContent = new JSONArray();
-//            jsonContent.put(heading_string);
-//            jsonContent.put(accuracy_string);
-//
-//            Log.d("arthur", "Getting heaing data");
-//            writeDataToFile("DELETEME_HEADING.txt", currentTime.toString() + " " + jsonContent.toString());
-//        }
-//
-//        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-//            // do nothing
-//        }
-//    };
-
 
     @InjectView(R.id.compass_text)
     private TextView compass;
     private final SensorEventListener orientListener = new SensorEventListener() {
 
-        public void onSensorChanged(SensorEvent event) {
+        public void onSensorChanged(SensorEvent event)
+        {
+            if(!isDataAcquisitionEnabled) return;
+
             float azimuth = event.values[0];
             float pitch = event.values[1];
             float roll = event.values[2];
@@ -403,42 +547,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     };
 
-//    @InjectView(R.id.acceleration_text)
-//    private TextView acceleration;
-//    private final SensorEventListener accelerationListener = new SensorEventListener() {
-//        public void onSensorChanged(SensorEvent event) {
-//            /*
-//            // alpha is calculated as t / (t + dT)
-//            // with t, the low-pass filter's time-constant
-//            // and dT, the event delivery rate
-//
-//            final float alpha = 0.8;
-//
-//            gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
-//            gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
-//            gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
-//
-//            linear_acceleration[0] = event.values[0] - gravity[0];
-//            linear_acceleration[1] = event.values[1] - gravity[1];
-//            linear_acceleration[2] = event.values[2] - gravity[2];
-//        }
-//
-//*/
-//            float x = event.values[0];
-//            float y = event.values[1];
-//            float z = event.values[2];
-//
-//            DecimalFormat df = new DecimalFormat("#0.0");
-//            String acc = df.format(x);
-//
-//            updateTextView(acceleration, acc);
-//
-//        }
-//        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-//            // do nothing
-//        }
-//    };
-
 
     @InjectView(R.id.BT_STATUS)
     private TextView btStatusTextView;
@@ -487,7 +595,14 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     Map<String, String> temp = new HashMap<String, String>();
                     temp.putAll(commandResult);
                     ObdReading reading = new ObdReading(lat, lon, alt, System.currentTimeMillis(), vin, temp);
-                    new UploadAsyncTask().execute(reading);
+//                    new UploadAsyncTask().execute(reading);
+
+//                    isDataIndependentOfBluetoothConnectionEnabled = prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, false);
+
+                } else if (prefs.getBoolean(ConfigActivity.UPLOAD_URL_KEY, false)) {
+                    user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
+                    Map<String, String> temp = new HashMap<String, String>();
+                    temp.putAll(commandResult);
 
                 } else if (prefs.getBoolean(ConfigActivity.ENABLE_FULL_LOGGING_KEY, false)) {
                     // Write the current reading to CSV
@@ -564,7 +679,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         Log.d("arthur", "request worked");
     }
 
-    public void stateUpdate(final ObdCommandJob job) {
+    public void stateUpdate(final ObdCommandJob job)
+    {
+        if(!isDataAcquisitionEnabled) return;
+
         final String cmdName = job.getCommand().getName();
         String cmdResult = "";
         final String cmdID = LookUpCommand(cmdName);
@@ -609,6 +727,19 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         if (diffInMillis <= minMillisBetweenData) return;
         resourceNameTolastDataUpdate.put(cmdName, currentTime);
+
+        JSONObject jsonObjObd = new JSONObject();
+        try {
+            jsonObjObd.put("timestamp", fmt.format(currentTime));
+            jsonObjObd.put("name", cmdName);
+            jsonObjObd.put("result", cmdResult);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+
+        obdAddRequests.put(jsonObjObd);
+
+        // backup
 
         // https://stackoverflow.com/questions/10717838/how-to-create-json-format-data-in-android
         JSONArray jsonContent = new JSONArray();
@@ -713,6 +844,18 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 // TODO: add your code here!
             };
         }
+
+        user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
+        Log.d(TAG, "user email: " + user_email);
+
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                sendDataToAws();
+                handler.postDelayed(this,30 * 1000);
+            }
+        },20000);
 
         final BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
         if (btAdapter != null)
@@ -860,7 +1003,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
 
         @Override
-        public void onSensorChanged(SensorEvent event) {
+        public void onSensorChanged(SensorEvent event)
+        {
+            if(!isDataAcquisitionEnabled) return;
 
             if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
                 magnetic_field_vec = event.values.clone();
@@ -1048,8 +1193,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     public boolean onCreateOptionsMenu(Menu menu) {
         menu.add(0, START_LIVE_DATA, 0, getString(R.string.menu_start_live_data));
         menu.add(0, STOP_LIVE_DATA, 0, getString(R.string.menu_stop_live_data));
-        menu.add(0, GET_DTC, 0, getString(R.string.menu_get_dtc));
-        menu.add(0, TRIPS_LIST, 0, getString(R.string.menu_trip_list));
+//        menu.add(0, GET_DTC, 0, getString(R.string.menu_get_dtc));
+//        menu.add(0, TRIPS_LIST, 0, getString(R.string.menu_trip_list));
         menu.add(0, SETTINGS, 0, getString(R.string.menu_settings));
         return true;
     }
@@ -1065,12 +1210,12 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             case SETTINGS:
                 updateConfig();
                 return true;
-            case GET_DTC:
-                getTroubleCodes();
-                return true;
-            case TRIPS_LIST:
-                startActivity(new Intent(this, TripListActivity.class));
-                return true;
+//            case GET_DTC:
+//                getTroubleCodes();
+//                return true;
+//            case TRIPS_LIST:
+//                startActivity(new Intent(this, TripListActivity.class));
+//                return true;
         }
         return false;
     }
@@ -1115,6 +1260,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 Log.e(TAG, "Can't enable logging to file.", e);
             }
         }
+
+        if(isDataIndependentOfBluetoothConnectionEnabled || (service != null && service.isRunning()))
+        {
+            isDataAcquisitionEnabled = true;
+        }
     }
 
     private void stopLiveData() {
@@ -1150,6 +1300,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         if (myCSVWriter != null) {
             myCSVWriter.closeLogCSVWriter();
+        }
+
+        if(isDataIndependentOfBluetoothConnectionEnabled || service == null || !service.isRunning())
+        {
+            isDataAcquisitionEnabled = false;
         }
     }
 
@@ -1190,15 +1345,15 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         MenuItem startItem = menu.findItem(START_LIVE_DATA);
         MenuItem stopItem = menu.findItem(STOP_LIVE_DATA);
         MenuItem settingsItem = menu.findItem(SETTINGS);
-        MenuItem getDTCItem = menu.findItem(GET_DTC);
+//        MenuItem getDTCItem = menu.findItem(GET_DTC);
 
         if (service != null && service.isRunning()) {
-            getDTCItem.setEnabled(false);
+//            getDTCItem.setEnabled(false);
             startItem.setEnabled(false);
             stopItem.setEnabled(true);
             settingsItem.setEnabled(false);
         } else {
-            getDTCItem.setEnabled(true);
+//            getDTCItem.setEnabled(true);
             stopItem.setEnabled(false);
             startItem.setEnabled(true);
             settingsItem.setEnabled(true);
@@ -1337,32 +1492,32 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     /**
      * Uploading asynchronous task
      */
-    private class UploadAsyncTask extends AsyncTask<ObdReading, Void, Void> {
-
-        @Override
-        protected Void doInBackground(ObdReading... readings) {
-            Log.d(TAG, "Uploading " + readings.length + " readings..");
-            // instantiate reading service client
-            final String endpoint = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
-            RestAdapter restAdapter = new RestAdapter.Builder()
-                    .setEndpoint(endpoint)
-                    .build();
-            ObdService service = restAdapter.create(ObdService.class);
-            // upload readings
-            for (ObdReading reading : readings) {
-                try {
-                    Response response = service.uploadReading(reading);
-                    assert response.getStatus() == 200;
-                } catch (RetrofitError re) {
-                    Log.e(TAG, re.toString());
-                }
-
-            }
-            Log.d(TAG, "Done");
-            return null;
-        }
-
-    }
+//    private class UploadAsyncTask extends AsyncTask<ObdReading, Void, Void> {
+//
+//        @Override
+//        protected Void doInBackground(ObdReading... readings) {
+//            Log.d(TAG, "Uploading " + readings.length + " readings..");
+//            // instantiate reading service client
+//            final String endpoint = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
+//            RestAdapter restAdapter = new RestAdapter.Builder()
+//                    .setEndpoint(endpoint)
+//                    .build();
+//            ObdService service = restAdapter.create(ObdService.class);
+//            // upload readings
+//            for (ObdReading reading : readings) {
+//                try {
+//                    Response response = service.uploadReading(reading);
+//                    assert response.getStatus() == 200;
+//                } catch (RetrofitError re) {
+//                    Log.e(TAG, re.toString());
+//                }
+//
+//            }
+//            Log.d(TAG, "Done");
+//            return null;
+//        }
+//
+//    }
 
     private void initViewsAndListener() {
         toast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
@@ -1422,7 +1577,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 Looper.myLooper());
 
     }
-    public void onLocationChanged(Location location) {
+    public void onLocationChanged(Location location)
+    {
+        if(!isDataAcquisitionEnabled) return;
+
         mLastLocation = location;
 
         String latitude = Double.toString(location.getLatitude());
@@ -1448,6 +1606,19 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         if (diffInMillis <= minMillisBetweenData) return;
         lastUpdateTimeGPS = currentTime;
+
+        JSONObject jsonObjObd = new JSONObject();
+        try {
+            jsonObjObd.put("timestamp", fmt.format(currentTime));
+            jsonObjObd.put("latitude", latitude);
+            jsonObjObd.put("longitude", longitude);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+
+        locationAddRequests.put(jsonObjObd);
+
+        // backup
 
         JSONArray jsonGPS = new JSONArray();
         jsonGPS.put(latitude);

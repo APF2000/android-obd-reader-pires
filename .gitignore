@@ -25,3 +25,5 @@ local.properties
 .idea
 
 .gradle
+bkp_google-services.json
+google-services.json
