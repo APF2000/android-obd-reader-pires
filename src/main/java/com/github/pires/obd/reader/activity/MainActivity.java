@@ -90,6 +90,9 @@ import java.text.DecimalFormat;
 
 import java.text.SimpleDateFormat;
 
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
+
 import java.util.ArrayList;
 
 import java.util.Calendar;
@@ -134,6 +137,7 @@ import com.google.android.gms.location.SettingsClient;
 @RequiresApi(api = Build.VERSION_CODES.O)
 @ContentView(R.layout.main)
 public class MainActivity extends RoboActivity implements ObdProgressListener, LocationListener, GpsStatus.Listener {
+    SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
     SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private float gravity[] = {0, 0, 0};
@@ -143,6 +147,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     JSONArray accAddRequests = new JSONArray();
     JSONArray obdAddRequests = new JSONArray();
     JSONArray locationAddRequests = new JSONArray();
+
     GnssStatus.Callback mGnssStatusCallback;
     LocationManager mLocationManager;
     private float compass_last_measured_bearing = 0;
@@ -160,7 +165,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private Date lastBearingUpdate = new Date();
 
     private final long minMillisBetweenData = 50;
-    private final long minSecondsBetweenData = 1;
+
     private static final String TAG = MainActivity.class.getName();
     private static final int NO_BLUETOOTH_ID = 0;
     private static final int BLUETOOTH_DISABLED = 1;
@@ -326,8 +331,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     }
 
-
->>>>>>> master
     @InjectView(R.id.acceleration_text)
     private TextView acceleration;
     private final SensorEventListener accelerationListener = new SensorEventListener() {
@@ -986,6 +989,37 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            mLocationManager.registerGnssStatusCallback(mGnssStatusCallback);
+        }
+        mLocationManager.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER, 30000, 0, this
+        );
+
+        Log.d(TAG, "Entered onStart...");
+
+        ActivityCompat.requestPermissions(this, new String[]{
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.MANAGE_EXTERNAL_STORAGE
+                }, 1
+        );
+
+        queue = Volley.newRequestQueue(this);
+    }
+
+    @Override
     protected void onPause() {
         super.onPause();
         Log.d(TAG, "Pausing..");
@@ -1098,7 +1132,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     String contentString = jsonContent.toString();
                     Log.d(TAG, "obd.pires.data: Getting bearing data: " + contentString);
                     writeDataToFile("DELETEME_BEARING.txt", fmt.format(currentTime) + " " + contentString);
-
                 }
             }
         }
