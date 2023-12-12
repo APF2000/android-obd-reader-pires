@@ -41,9 +41,12 @@ import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
+import android.view.View.OnClickListener;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TableLayout;
 import android.widget.TableRow;
@@ -991,6 +994,25 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         if (checkPermissions()) {
             initLocationUpdate();
         }
+
+        Button generate_pdf = findViewById(R.id.generate_pdf);
+        generate_pdf.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Toast.makeText(getApplicationContext(), "foi caralho", Toast.LENGTH_LONG).show();
+            }
+        });
+
+/*
+        Preference button = findPreference(getString(R.string.myCoolButton));
+        button.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                //code for what you want it to do
+                return true;
+            }
+        });
+*/
     }
 
 
