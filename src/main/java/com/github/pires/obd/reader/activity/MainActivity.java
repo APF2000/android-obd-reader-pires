@@ -216,10 +216,10 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         Log.d(TAG, "user email: " + user_email);
 
         ActivityCompat.requestPermissions( this,    new String[]{
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.MANAGE_EXTERNAL_STORAGE,
                 Manifest.permission.BLUETOOTH,
-                Manifest.permission.BLUETOOTH_ADMIN
+                Manifest.permission.BLUETOOTH_ADMIN,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.MANAGE_EXTERNAL_STORAGE
                 }, 1
         );
 
@@ -249,7 +249,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
         ActivityCompat.requestPermissions(this, new String[]{
                         Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.MANAGE_EXTERNAL_STORAGE
+                        Manifest.permission.MANAGE_EXTERNAL_STORAGE,
+                Manifest.permission.BLUETOOTH,
+                Manifest.permission.BLUETOOTH_CONNECT
                 }, 1
         );
 
@@ -867,9 +869,35 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     }
 
+
+    private static final int REQUEST_BLUETOOTH_PERMISSION = 1;
+
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT}, REQUEST_BLUETOOTH_PERMISSION);
+            } else {
+                // Você já tem permissão, pode prosseguir com as operações Bluetooth.
+            }
+        }
+
+        ActivityCompat.requestPermissions( this,    new String[]{
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.MANAGE_EXTERNAL_STORAGE,
+                        Manifest.permission.BLUETOOTH,
+                        Manifest.permission.BLUETOOTH_ADMIN
+                }, 1
+        );
+
+//        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+//            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT});
+////                    , REQUEST_BLUETOOTH_CONNECT_PERMISSION);
+//        }
+
 
         if (savedInstanceState == null) {
             Bundle extras = getIntent().getExtras();
@@ -1337,6 +1365,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             case BLUETOOTH_DISABLED:
                 Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
                 if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+
+                    Toast.makeText(this, R.string.text_bluetooth_disabled, Toast.LENGTH_LONG).show();
                     throw new RuntimeException("bluetooth is disabled");
                 }
                 startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
@@ -1663,6 +1693,16 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_BLUETOOTH_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // A permissão foi concedida, você pode continuar com as operações Bluetooth.
+            } else {
+                // A permissão foi negada, trate de acordo.
+                Toast.makeText(this, "Problema com permissões", Toast.LENGTH_LONG).show();
+            }
+        }
+
         if (requestCode == FINE_LOCATION_REQUEST) {
             // Received permission result for Location permission.
             Log.i(TAG, "Received response for Location permission request.");
