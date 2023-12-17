@@ -143,7 +143,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private String userId;
     private String userToken;
     private float gravity[] = {0, 0, 0};
-    private String user_email = "";
+//    private String user_email = "";
     private boolean isDataAcquisitionEnabled = false;
     private boolean isDataIndependentOfBluetoothConnectionEnabled = true;
     JSONArray accAddRequests = new JSONArray();
@@ -212,8 +212,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     protected void onStart() {
         super.onStart();
         Log.d(TAG, "Entered onStart...");
-        user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
-        Log.d(TAG, "user email: " + user_email);
+//        user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
+//        Log.d(TAG, "user email: " + user_email);
 
         ActivityCompat.requestPermissions( this,    new String[]{
                 Manifest.permission.BLUETOOTH,
@@ -635,7 +635,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 //                    isDataIndependentOfBluetoothConnectionEnabled = prefs.getBoolean(ConfigActivity.UPLOAD_DATA_KEY, false);
 
                 } else if (prefs.getBoolean(ConfigActivity.UPLOAD_URL_KEY, false)) {
-                    user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
+//                    user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
                     Map<String, String> temp = new HashMap<String, String>();
                     temp.putAll(commandResult);
 
@@ -918,8 +918,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             };
         }
 
-        user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
-        Log.d(TAG, "user email: " + user_email);
+//        user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
+//        Log.d(TAG, "user email: " + user_email);
 
         Handler handler = new Handler();
         handler.postDelayed(new Runnable() {

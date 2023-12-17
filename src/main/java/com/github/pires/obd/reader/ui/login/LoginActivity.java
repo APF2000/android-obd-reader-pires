@@ -40,25 +40,41 @@ public class LoginActivity extends AppCompatActivity {
 
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == RC_SIGN_IN) {
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-//            try {
-            // Google Sign In was successful, authenticate with Firebase
-            GoogleSignInAccount account = task.getResult();
-            userEmail = account.getEmail();
-            userId = account.getId();
-            userToken = account.getIdToken();
+            try {
+                // Obtém a conta Google autenticada
+                GoogleSignInAccount account = task.getResult(ApiException.class);
 
-            if (account != null) {
-                firebaseAuthWithGoogle(account.getIdToken());
+                // Autentica no Firebase com a credencial do Google
+                AuthCredential credential = GoogleAuthProvider.getCredential(account.getIdToken(), null);
+                mAuth.signInWithCredential(credential)
+                        .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                            @Override
+                            public void onComplete(@NonNull Task<AuthResult> task) {
+                                if (task.isSuccessful()) {
+                                    // Sign in success, update UI with the signed-in user's information
+                                    Log.d(TAG, "signInWithCredential:success");
+                                    FirebaseUser user = mAuth.getCurrentUser();
+                                    if (user != null) {
+                                        authToken = user.getIdToken(false).getResult().getToken();
+                                        userEmail = user.getEmail();
+                                        startMainActivity();
+                                    }
+                                } else {
+                                    // If sign in fails, display a message to the user.
+                                    Log.e(TAG, "signInWithCredential:failure", task.getException());
+                                    // Toast.makeText(LoginActivity.this, "Authentication failed.",
+                                    //        Toast.LENGTH_SHORT).show();
+                                }
+                            }
+                        });
+            } catch (ApiException e) {
+                Log.e(TAG, "Google sign-in failed", e);
             }
-//            } catch (ApiException e) {
-//                // Google Sign In failed
-//                Log.w(TAG, "Google sign in failed", e);
-//            }
         }
     }
 
@@ -120,26 +136,48 @@ public class LoginActivity extends AppCompatActivity {
         Intent signInIntent = signInClient.getSignInIntent();
         startActivityForResult(signInIntent, RC_SIGN_IN);
 
-        mAuth.signInAnonymously()
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
-                            // Sign in success, update UI with the signed-in user's information
-                            Log.d(TAG, "signInAnonymously:success");
-                            FirebaseUser user = mAuth.getCurrentUser();
-                            if (user != null) {
-                                authToken = user.getIdToken(false).getResult().getToken();
-                                startMainActivity();
-                            }
-                        } else {
-                            // If sign in fails, display a message to the user.
-                            Log.e(TAG, "signInAnonymously:failure", task.getException());
-//                            Toast.makeText(LoginActivity.this, "Authentication failed.",
-//                                    Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                });
+//        mAuth.signInWithCredential(credential)
+//                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+//                    @Override
+//                    public void onComplete(@NonNull Task<AuthResult> task) {
+//                        if (task.isSuccessful()) {
+//                            // Sign in success, update UI with the signed-in user's information
+//                            Log.d(TAG, "signInWithCredential:success");
+//                            FirebaseUser user = mAuth.getCurrentUser();
+//                            if (user != null) {
+//                                authToken = user.getIdToken(false).getResult().getToken();
+//                                startMainActivity();
+//                            }
+//                        } else {
+//                            // If sign in fails, display a message to the user.
+//                            Log.e(TAG, "signInWithCredential:failure", task.getException());
+//                            // Toast.makeText(LoginActivity.this, "Authentication failed.",
+//                            //        Toast.LENGTH_SHORT).show();
+//                        }
+//                    }
+//                });
+
+
+//        mAuth.signInAnonymously()
+//                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+//                    @Override
+//                    public void onComplete(@NonNull Task<AuthResult> task) {
+//                        if (task.isSuccessful()) {
+//                            // Sign in success, update UI with the signed-in user's information
+//                            Log.d(TAG, "signInAnonymously:success");
+//                            FirebaseUser user = mAuth.getCurrentUser();
+//                            if (user != null) {
+//                                authToken = user.getIdToken(false).getResult().getToken();
+//                                startMainActivity();
+//                            }
+//                        } else {
+//                            // If sign in fails, display a message to the user.
+//                            Log.e(TAG, "signInAnonymously:failure", task.getException());
+////                            Toast.makeText(LoginActivity.this, "Authentication failed.",
+////                                    Toast.LENGTH_SHORT).show();
+//                        }
+//                    }
+//                });
     }
 
     private void startMainActivity() {
