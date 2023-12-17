@@ -155,6 +155,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     JSONArray accAddRequests = new JSONArray();
     JSONArray obdAddRequests = new JSONArray();
     JSONArray locationAddRequests = new JSONArray();
+//    JSONArray createPDFRequest = new JSONArray();
 
     GnssStatus.Callback mGnssStatusCallback;
     LocationManager mLocationManager;
@@ -190,6 +191,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private static boolean bluetoothDefaultIsEnable = false;
 
     RequestQueue queue;
+
+    public String selected_date_filter = "última hora";
 
     static {
         RoboGuice.setUseAnnotationDatabases(false);
@@ -262,6 +265,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         );
 
         queue = Volley.newRequestQueue(this);
+
     }
 
     private void sendDataToLambda(JSONObject bodyJson){
@@ -321,6 +325,39 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         };
         queue.add(getRequest);
     }
+
+
+    private void createPDFLambda(JSONObject bodyJson){
+        String url = "https://udk2uz8gkd.execute-api.us-east-1.amazonaws.com/default/hello-world";
+        StringRequest postRequest = new StringRequest(Request.Method.POST, url,
+                response -> {
+                    // response
+                    Log.d("Response", response);
+                },
+                error -> {
+                    // error
+                    Log.d("Error.Response", error.toString());
+                }
+        ) {
+            @Override
+            public byte[] getBody() throws AuthFailureError {
+
+                String body_str = bodyJson.toString();
+
+                return body_str.getBytes();
+            }
+
+            @Override
+            public String getBodyContentType()
+            {
+                return "application/json";
+            }
+        };
+        queue.add(postRequest);
+    }
+
+
+
 
     void sendDataToAws()
     {
@@ -902,7 +939,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         //get the spinner from the xml.
         Spinner filter = findViewById(R.id.date_filter);
         //create a list of items for the spinner.
-        String[] items = new String[]{"última hora", "últimas 12h", "últimas 24h"};
+        String[] items = new String[]{"última hora", "últimas 24h", "últimos 5 dias"};
         //create an adapter to describe how the items are displayed, adapters are used in several places in android.
         //There are multiple variations of this, but this is the basic variant.
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, items);
@@ -917,8 +954,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             int pos, long id) {
                 // An item was selected. You can retrieve the selected item using
                 // parent.getItemAtPosition(pos)
-                String selected_item = (String) parent.getItemAtPosition(pos);
-                Toast.makeText(getApplicationContext(), selected_item , Toast.LENGTH_LONG).show();
+                selected_date_filter = (String) parent.getItemAtPosition(pos);
+                Toast.makeText(getApplicationContext(), selected_date_filter , Toast.LENGTH_LONG).show();
             }
 
             public void onNothingSelected(AdapterView<?> parent) {
@@ -1028,11 +1065,41 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             initLocationUpdate();
         }
 
-        Button generate_pdf = findViewById(R.id.generate_pdf);
-        generate_pdf.setOnClickListener(new View.OnClickListener() {
+        Button create_pdf = findViewById(R.id.create_pdf);
+        create_pdf.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Toast.makeText(getApplicationContext(), "funcionou", Toast.LENGTH_LONG).show();
+
+                Calendar c = Calendar.getInstance();
+                Date currentTime = c.getTime();
+
+                c.setTime(currentTime);
+                Date dateBegFilter = new Date();
+
+                if (selected_date_filter == "última hora") {
+                    c.add(Calendar.HOUR, -1);
+                }else if (selected_date_filter == "últimas 24h") {
+                    c.add(Calendar.DATE, -1);
+                }else if (selected_date_filter == "últimos 5 dias") {
+                    c.add(Calendar.DATE, -5);
+                }else{
+                    c.add(Calendar.HOUR, -1);
+                }
+                dateBegFilter = c.getTime();
+
+                JSONObject jsonObjPDF = new JSONObject();
+                try {
+                    jsonObjPDF.put("date_beg", fmt.format(dateBegFilter));
+                    jsonObjPDF.put("date_end", fmt.format(currentTime));
+                    jsonObjPDF.put("user_token", userEmail);
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+
+//                createPDFRequest.put(jsonObjPDF);
+//                createPDFLambda(jsonObjPDF);
+
             }
         });
 
