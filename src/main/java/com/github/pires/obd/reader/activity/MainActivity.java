@@ -46,6 +46,7 @@ import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
 import android.view.View.OnClickListener;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -899,14 +900,34 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         );
 
         //get the spinner from the xml.
-        Spinner dropdown = findViewById(R.id.date_filter);
+        Spinner filter = findViewById(R.id.date_filter);
         //create a list of items for the spinner.
         String[] items = new String[]{"última hora", "últimas 12h", "últimas 24h"};
         //create an adapter to describe how the items are displayed, adapters are used in several places in android.
         //There are multiple variations of this, but this is the basic variant.
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, items);
         //set the spinners adapter to the previously created one.
-        dropdown.setAdapter(adapter);
+        filter.setAdapter(adapter);
+
+
+//        Spinner spinner = (Spinner) findViewById(R.id.spinner);
+        filter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+            public void onItemSelected(AdapterView<?> parent, View view,
+            int pos, long id) {
+                // An item was selected. You can retrieve the selected item using
+                // parent.getItemAtPosition(pos)
+                String selected_item = (String) parent.getItemAtPosition(pos);
+                Toast.makeText(getApplicationContext(), selected_item , Toast.LENGTH_LONG).show();
+            }
+
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Another interface callback
+                Toast.makeText(getApplicationContext(), "nenhum filtro selecionado", Toast.LENGTH_LONG).show();
+            }
+        });
+
+
 
 //        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
 //            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT});
