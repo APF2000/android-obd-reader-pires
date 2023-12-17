@@ -365,8 +365,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     }
 
-    @InjectView(R.id.acceleration_text)
-    private TextView acceleration;
+//    @InjectView(R.id.acceleration_text)
+//    private TextView acceleration;
     private final SensorEventListener accelerationListener = new SensorEventListener() {
         public void onSensorChanged(SensorEvent event)
         {
@@ -453,7 +453,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             writeDataToFile("DELETEME_ACCELERATION.txt",
                     fmt.format(currentTime) + " " + accelerationString);
 
-            //updateTextView(acceleration, acc);
+//            updateTextView(acceleration, acc);
 
         }
 
@@ -463,8 +463,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     };
 
 
-    //    @InjectView(R.id.acceleration_text)
-    //    private TextView acceleration;
+//        @InjectView(R.id.acceleration_text)
+//        private TextView acceleration;
     private final SensorEventListener gravityListener = new SensorEventListener() {
         public void onSensorChanged(SensorEvent event) {
             gravity_vec[0] = event.values[0];
