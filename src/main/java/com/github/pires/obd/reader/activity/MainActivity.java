@@ -46,8 +46,10 @@ import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
 import android.view.View.OnClickListener;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -896,6 +898,16 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 }, 1
         );
 
+        //get the spinner from the xml.
+        Spinner dropdown = findViewById(R.id.date_filter);
+        //create a list of items for the spinner.
+        String[] items = new String[]{"última hora", "últimas 12h", "últimas 24h"};
+        //create an adapter to describe how the items are displayed, adapters are used in several places in android.
+        //There are multiple variations of this, but this is the basic variant.
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, items);
+        //set the spinners adapter to the previously created one.
+        dropdown.setAdapter(adapter);
+
 //        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
 //            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT});
 ////                    , REQUEST_BLUETOOTH_CONNECT_PERMISSION);
@@ -999,7 +1011,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         generate_pdf.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Toast.makeText(getApplicationContext(), "foi caralho", Toast.LENGTH_LONG).show();
+                Toast.makeText(getApplicationContext(), "funcionou", Toast.LENGTH_LONG).show();
             }
         });
 
