@@ -352,16 +352,16 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 response -> {
                     // response
                     Log.d("Response", response);
-                    if(response == "pdf criado"){
-                        Toast.makeText(getApplicationContext(), "Um arquivo PDF com as métricas foi enviado ao seu email", Toast.LENGTH_LONG).show();
-                    }else{
-                        Toast.makeText(getApplicationContext(), "Falha ao gerar métricas", Toast.LENGTH_LONG).show();
-                    }
+//                    if(response == "pdf criado"){
+////                        Toast.makeText(getApplicationContext(), "Um arquivo PDF com as métricas foi enviado ao seu email", Toast.LENGTH_LONG).show();
+//                    }else{
+//                        Toast.makeText(getApplicationContext(), "Falha ao gerar métricas", Toast.LENGTH_LONG).show();
+//                    }
                 },
                 error -> {
                     // error
                     Log.d("Error.Response", error.toString());
-                    Toast.makeText(getApplicationContext(), "Falha ao gerar métricas", Toast.LENGTH_LONG).show();
+//                    Toast.makeText(getApplicationContext(), "Falha ao gerar métricas", Toast.LENGTH_LONG).show();
                 }
         ) {
             @Override
