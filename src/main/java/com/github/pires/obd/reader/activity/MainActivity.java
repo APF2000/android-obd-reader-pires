@@ -348,6 +348,9 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     private void createPDFLambda(JSONObject bodyJson){
         String url = "https://hjmvnfbpuox5wimfnw6six73cm0xwypj.lambda-url.us-east-1.on.aws";
+        if (bodyJson.length()<=0){
+            Log.d("json", "deu ruim");
+        }
         StringRequest postRequest = new StringRequest(Request.Method.POST, url,
                 response -> {
                     // response
@@ -1165,7 +1168,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     jsonObjPDF.put("date_end", fmt.format(currentTime));
                     jsonObjPDF.put("user_token", userEmail);
 
-                    createPDFLambda(jsonObjPDF);
                 } catch (JSONException e) {
                     throw new RuntimeException(e);
                 }
