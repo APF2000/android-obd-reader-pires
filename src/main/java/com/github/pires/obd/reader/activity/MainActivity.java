@@ -189,9 +189,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private static final int SAVE_TRIP_NOT_AVAILABLE = 11;
     private static final int REQUEST_ENABLE_BT = 1234;
     private static boolean bluetoothDefaultIsEnable = false;
-    private static String LAST_HOUR = "última hora";
-    private static String LAST_DAY = "últimas 24h";
-    private static String LAST_5_DAYS = "últimos 5 dias";
+    private static final String LAST_HOUR = "última hora";
+    private static final String LAST_DAY = "últimas 24h";
+    private static final String LAST_10_DAYS = "últimos 10 dias";
+    private static final String LAST_MONTH = "último mês";
+    private static final String ALL_TIME = "todo o tempo";
 
     RequestQueue queue;
 
@@ -837,32 +839,32 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     @SuppressLint("NewApi")
     private void writeDataToFile(String fileName, String content) {
-
-        if (!Environment.isExternalStorageManager()) {
-            Intent intent = new Intent();
-            intent.setAction(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-            Uri uri = Uri.fromParts("package", this.getPackageName(), null);
-            intent.setData(uri);
-            startActivity(intent);
-        }
-
-        File path = Environment.getExternalStorageDirectory();
-        File file = new File(path, fileName);
-
-        content += "\n";
-
-        if (!path.exists()) {
-            path.mkdirs();
-        }
-
-        try {
-            // append to file
-            FileOutputStream writer = new FileOutputStream(file, true);
-            writer.write(content.getBytes());
-            writer.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+//
+//        if (!Environment.isExternalStorageManager()) {
+//            Intent intent = new Intent();
+//            intent.setAction(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+//            Uri uri = Uri.fromParts("package", this.getPackageName(), null);
+//            intent.setData(uri);
+//            startActivity(intent);
+//        }
+//
+//        File path = Environment.getExternalStorageDirectory();
+//        File file = new File(path, fileName);
+//
+//        content += "\n";
+//
+//        if (!path.exists()) {
+//            path.mkdirs();
+//        }
+//
+//        try {
+//            // append to file
+//            FileOutputStream writer = new FileOutputStream(file, true);
+//            writer.write(content.getBytes());
+//            writer.close();
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
 
     }
 
@@ -942,7 +944,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         //get the spinner from the xml.
         Spinner filter = findViewById(R.id.date_filter);
         //create a list of items for the spinner.
-        String[] items = new String[]{LAST_HOUR, LAST_DAY, LAST_5_DAYS};
+        String[] items = new String[]{LAST_HOUR, LAST_DAY, LAST_10_DAYS, LAST_MONTH, ALL_TIME};
         //create an adapter to describe how the items are displayed, adapters are used in several places in android.
         //There are multiple variations of this, but this is the basic variant.
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, items);
@@ -1084,8 +1086,12 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     c.add(Calendar.HOUR, -1);
                 }else if (selected_date_filter == LAST_DAY) {
                     c.add(Calendar.DATE, -1);
-                }else if (selected_date_filter == LAST_5_DAYS) {
-                    c.add(Calendar.DATE, -5);
+                }else if (selected_date_filter == LAST_10_DAYS) {
+                    c.add(Calendar.DATE, -10);
+                }else if (selected_date_filter == LAST_MONTH) {
+                    c.add(Calendar.MONTH, -1);
+                }else if (selected_date_filter == ALL_TIME) {
+                    c.add(Calendar.YEAR, -50);
                 }else{
                     c.add(Calendar.HOUR, -1);
                 }
