@@ -189,10 +189,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private static final int SAVE_TRIP_NOT_AVAILABLE = 11;
     private static final int REQUEST_ENABLE_BT = 1234;
     private static boolean bluetoothDefaultIsEnable = false;
+    private static String LAST_HOUR = "última hora";
+    private static String LAST_DAY = "últimas 24h";
+    private static String LAST_5_DAYS = "últimos 5 dias";
 
     RequestQueue queue;
 
-    public String selected_date_filter = "última hora";
+    public String selected_date_filter = LAST_HOUR;
 
     static {
         RoboGuice.setUseAnnotationDatabases(false);
@@ -328,7 +331,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
 
     private void createPDFLambda(JSONObject bodyJson){
-        String url = "https://udk2uz8gkd.execute-api.us-east-1.amazonaws.com/default/hello-world";
+        String url = "https://hjmvnfbpuox5wimfnw6six73cm0xwypj.lambda-url.us-east-1.on.aws";
         StringRequest postRequest = new StringRequest(Request.Method.POST, url,
                 response -> {
                     // response
@@ -939,7 +942,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         //get the spinner from the xml.
         Spinner filter = findViewById(R.id.date_filter);
         //create a list of items for the spinner.
-        String[] items = new String[]{"última hora", "últimas 24h", "últimos 5 dias"};
+        String[] items = new String[]{LAST_HOUR, LAST_DAY, LAST_5_DAYS};
         //create an adapter to describe how the items are displayed, adapters are used in several places in android.
         //There are multiple variations of this, but this is the basic variant.
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, items);
@@ -1075,13 +1078,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 Date currentTime = c.getTime();
 
                 c.setTime(currentTime);
-                Date dateBegFilter = new Date();
+                Date dateBegFilter;
 
-                if (selected_date_filter == "última hora") {
+                if (selected_date_filter == LAST_HOUR) {
                     c.add(Calendar.HOUR, -1);
-                }else if (selected_date_filter == "últimas 24h") {
+                }else if (selected_date_filter == LAST_DAY) {
                     c.add(Calendar.DATE, -1);
-                }else if (selected_date_filter == "últimos 5 dias") {
+                }else if (selected_date_filter == LAST_5_DAYS) {
                     c.add(Calendar.DATE, -5);
                 }else{
                     c.add(Calendar.HOUR, -1);
@@ -1098,7 +1101,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 }
 
 //                createPDFRequest.put(jsonObjPDF);
-//                createPDFLambda(jsonObjPDF);
+                createPDFLambda(jsonObjPDF);
 
             }
         });
