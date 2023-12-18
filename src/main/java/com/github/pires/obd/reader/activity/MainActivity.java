@@ -352,10 +352,16 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 response -> {
                     // response
                     Log.d("Response", response);
+                    if(response == "pdf criado"){
+                        Toast.makeText(getApplicationContext(), "Um arquivo PDF com as métricas foi enviado ao seu email", Toast.LENGTH_LONG).show();
+                    }else{
+                        Toast.makeText(getApplicationContext(), "Falha ao gerar métricas", Toast.LENGTH_LONG).show();
+                    }
                 },
                 error -> {
                     // error
                     Log.d("Error.Response", error.toString());
+                    Toast.makeText(getApplicationContext(), "Falha ao gerar métricas", Toast.LENGTH_LONG).show();
                 }
         ) {
             @Override
@@ -1019,12 +1025,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 // An item was selected. You can retrieve the selected item using
                 // parent.getItemAtPosition(pos)
                 selected_date_filter = (String) parent.getItemAtPosition(pos);
-                Toast.makeText(getApplicationContext(), selected_date_filter , Toast.LENGTH_LONG).show();
             }
 
             public void onNothingSelected(AdapterView<?> parent) {
                 // Another interface callback
-                Toast.makeText(getApplicationContext(), "nenhum filtro selecionado", Toast.LENGTH_LONG).show();
+                Toast.makeText(getApplicationContext(), "Nenhum filtro selecionado", Toast.LENGTH_LONG).show();
             }
         });
 
@@ -1133,8 +1138,6 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         create_pdf.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Toast.makeText(getApplicationContext(), "funcionou", Toast.LENGTH_LONG).show();
-
                 Calendar c = Calendar.getInstance();
                 Date currentTime = c.getTime();
 
@@ -1161,13 +1164,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     jsonObjPDF.put("date_beg", fmt.format(dateBegFilter));
                     jsonObjPDF.put("date_end", fmt.format(currentTime));
                     jsonObjPDF.put("user_token", userEmail);
+
+                    createPDFLambda(jsonObjPDF);
                 } catch (JSONException e) {
                     throw new RuntimeException(e);
                 }
 
-//                createPDFRequest.put(jsonObjPDF);
                 createPDFLambda(jsonObjPDF);
-
             }
         });
 
@@ -1753,7 +1756,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 //    }
 
     private void initViewsAndListener() {
-        toast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
+//        toast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
 //        tvLocationDetails=findViewById(R.id.tvLocationDetails);
 //        mainLayout=findViewById(R.id.mainLayout);
 //        findViewById(R.id.btnGetLocation).setOnClickListener(new View.OnClickListener() {
@@ -1889,7 +1892,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 // A permissão foi concedida, você pode continuar com as operações Bluetooth.
             } else {
                 // A permissão foi negada, trate de acordo.
-                Toast.makeText(this, "Problema com permissões", Toast.LENGTH_LONG).show();
+//                Toast.makeText(this, "Problema com permissões", Toast.LENGTH_LONG).show();
             }
         }
 
