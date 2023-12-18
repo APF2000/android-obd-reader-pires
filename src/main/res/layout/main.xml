@@ -15,19 +15,19 @@
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_weight="3"
             android:tag="SPEED"
             android:text="@string/text_zero"
             android:textSize="@dimen/abc_text_size_display_3_material" />
 
-        <TextView
-            android:id="@+id/acceleration_text"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="left"
-            android:text="A"
-            android:textSize="@dimen/abc_text_size_display_3_material" />
+<!--        <TextView-->
+<!--            android:id="@+id/acceleration_text"-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_weight="1"-->
+<!--            android:gravity="left"-->
+<!--            android:text="A"-->
+<!--            android:textSize="@dimen/abc_text_size_display_3_material" />-->
 
         <TextView
             android:id="@+id/compass_text"
@@ -144,5 +144,27 @@
             android:gravity="center"
             android:text="" />
     </TableRow>
+    <TableRow
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content">
+
+        <Spinner
+            android:id="@+id/date_filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@android:drawable/btn_dropdown"
+            android:spinnerMode="dropdown"
+        />
+
+        <Button
+            android:id="@+id/create_pdf"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Gerar PDF"
+        ></Button>
+    </TableRow>
+
 
 </LinearLayout>

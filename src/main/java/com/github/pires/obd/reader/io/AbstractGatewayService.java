@@ -96,7 +96,7 @@ public abstract class AbstractGatewayService extends RoboService {
      * Show a notification while this service is running.
      */
     protected void showNotification(String contentTitle, String contentText, int icon, boolean ongoing, boolean notify, boolean vibrate) {
-        final PendingIntent contentIntent = PendingIntent.getActivity(ctx, 0, new Intent(ctx, MainActivity.class), 0);
+        final PendingIntent contentIntent = PendingIntent.getActivity(ctx, 0, new Intent(ctx, MainActivity.class), PendingIntent.FLAG_IMMUTABLE);
         final NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(ctx);
         notificationBuilder.setContentTitle(contentTitle)
                 .setContentText(contentText).setSmallIcon(icon)

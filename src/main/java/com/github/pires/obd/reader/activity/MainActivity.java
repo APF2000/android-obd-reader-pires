@@ -41,10 +41,16 @@ import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
+import android.view.View.OnClickListener;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -149,6 +155,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     JSONArray accAddRequests = new JSONArray();
     JSONArray obdAddRequests = new JSONArray();
     JSONArray locationAddRequests = new JSONArray();
+//    JSONArray createPDFRequest = new JSONArray();
 
     GnssStatus.Callback mGnssStatusCallback;
     LocationManager mLocationManager;
@@ -182,8 +189,15 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     private static final int SAVE_TRIP_NOT_AVAILABLE = 11;
     private static final int REQUEST_ENABLE_BT = 1234;
     private static boolean bluetoothDefaultIsEnable = false;
+    private static final String LAST_HOUR = "última hora";
+    private static final String LAST_DAY = "últimas 24h";
+    private static final String LAST_10_DAYS = "últimos 10 dias";
+    private static final String LAST_MONTH = "último mês";
+    private static final String ALL_TIME = "todo o tempo";
 
     RequestQueue queue;
+
+    public String selected_date_filter = LAST_HOUR;
 
     static {
         RoboGuice.setUseAnnotationDatabases(false);
@@ -215,13 +229,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 //        user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
 //        Log.d(TAG, "user email: " + user_email);
 
-        ActivityCompat.requestPermissions( this,    new String[]{
-                Manifest.permission.BLUETOOTH,
-                Manifest.permission.BLUETOOTH_ADMIN,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.MANAGE_EXTERNAL_STORAGE
-                }, 1
-        );
+//        ActivityCompat.requestPermissions( this,    new String[]{
+//                Manifest.permission.BLUETOOTH,
+//                Manifest.permission.BLUETOOTH_ADMIN,
+//                Manifest.permission.READ_EXTERNAL_STORAGE,
+//                Manifest.permission.MANAGE_EXTERNAL_STORAGE
+//                }, 1
+//        );
 
         // https://stackoverflow.com/questions/6822319/what-to-use-instead-of-addpreferencesfromresource-in-a-preferenceactivity
         // https://developer.android.com/reference/android/preference/PreferenceFragment.html
@@ -236,6 +250,15 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             //                                          int[] grantResults)
             // to handle the case where the user grants the permission. See the documentation
             // for ActivityCompat#requestPermissions for more details.
+            ActivityCompat.requestPermissions(this, new String[]{
+                            Manifest.permission.READ_EXTERNAL_STORAGE,
+                            Manifest.permission.MANAGE_EXTERNAL_STORAGE,
+                            Manifest.permission.BLUETOOTH,
+                            Manifest.permission.BLUETOOTH_CONNECT,
+                            Manifest.permission.BLUETOOTH_SCAN
+                    }, 1
+            );
+
             return;
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -248,14 +271,20 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         Log.d(TAG, "Entered onStart...");
 
         ActivityCompat.requestPermissions(this, new String[]{
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.MANAGE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.MANAGE_EXTERNAL_STORAGE,
                 Manifest.permission.BLUETOOTH,
-                Manifest.permission.BLUETOOTH_CONNECT
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_SCAN
                 }, 1
         );
 
+//        requestMultiplePermissions.launch(arrayOf(
+//                Manifest.permission.BLUETOOTH_SCAN,
+//                Manifest.permission.BLUETOOTH_CONNECT))
+
         queue = Volley.newRequestQueue(this);
+
     }
 
     private void sendDataToLambda(JSONObject bodyJson){
@@ -316,6 +345,45 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         queue.add(getRequest);
     }
 
+
+    private void createPDFLambda(JSONObject bodyJson){
+        String url = "https://hjmvnfbpuox5wimfnw6six73cm0xwypj.lambda-url.us-east-1.on.aws";
+        StringRequest postRequest = new StringRequest(Request.Method.POST, url,
+                response -> {
+                    // response
+                    Log.d("Response", response);
+//                    if(response == "pdf criado"){
+////                        Toast.makeText(getApplicationContext(), "Um arquivo PDF com as métricas foi enviado ao seu email", Toast.LENGTH_LONG).show();
+//                    }else{
+//                        Toast.makeText(getApplicationContext(), "Falha ao gerar métricas", Toast.LENGTH_LONG).show();
+//                    }
+                },
+                error -> {
+                    // error
+                    Log.d("Error.Response", error.toString());
+//                    Toast.makeText(getApplicationContext(), "Falha ao gerar métricas", Toast.LENGTH_LONG).show();
+                }
+        ) {
+            @Override
+            public byte[] getBody() throws AuthFailureError {
+
+                String body_str = bodyJson.toString();
+
+                return body_str.getBytes();
+            }
+
+            @Override
+            public String getBodyContentType()
+            {
+                return "application/json";
+            }
+        };
+        queue.add(postRequest);
+    }
+
+
+
+
     void sendDataToAws()
     {
         // send to aws
@@ -362,8 +430,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         }
     }
 
-    @InjectView(R.id.acceleration_text)
-    private TextView acceleration;
+//    @InjectView(R.id.acceleration_text)
+//    private TextView acceleration;
     private final SensorEventListener accelerationListener = new SensorEventListener() {
         public void onSensorChanged(SensorEvent event)
         {
@@ -446,11 +514,11 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             // backup
 
             String accelerationString = jsonAcceleration.toString();
-            Log.d("arthur", "Getting acceleration data: " + accelerationString);
+//            Log.d("arthur", "Getting acceleration data: " + accelerationString);
             writeDataToFile("DELETEME_ACCELERATION.txt",
                     fmt.format(currentTime) + " " + accelerationString);
 
-            //updateTextView(acceleration, acc);
+//            updateTextView(acceleration, acc);
 
         }
 
@@ -460,8 +528,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
     };
 
 
-    //    @InjectView(R.id.acceleration_text)
-    //    private TextView acceleration;
+//        @InjectView(R.id.acceleration_text)
+//        private TextView acceleration;
     private final SensorEventListener gravityListener = new SensorEventListener() {
         public void onSensorChanged(SensorEvent event) {
             gravity_vec[0] = event.values[0];
@@ -677,6 +745,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 Log.e(TAG, "Failure Starting live data");
                 btStatusTextView.setText(getString(R.string.status_bluetooth_error_connecting));
                 doUnbindService();
+            } catch (SecurityException se) {
+                Log.e(TAG, "Failure Starting live data - security exception");
+//                btStatusTextView.setText(getString(R.string.status_bluetooth_error_connecting));
+//                doUnbindService();
+            }catch(Exception e){
+
+                Log.e(TAG, "Failure Starting live data - exception");
             }
         }
 
@@ -739,6 +814,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 obdStatusTextView.setText(getString(R.string.status_obd_data));
         }
 
+        if(cmdResult == "NODATA") return;
+
         if (vv.findViewWithTag(cmdID) != null) {
             TextView existingTV = (TextView) vv.findViewWithTag(cmdID);
             existingTV.setText(cmdResult);
@@ -791,32 +868,32 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
     @SuppressLint("NewApi")
     private void writeDataToFile(String fileName, String content) {
-
-        if (!Environment.isExternalStorageManager()) {
-            Intent intent = new Intent();
-            intent.setAction(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-            Uri uri = Uri.fromParts("package", this.getPackageName(), null);
-            intent.setData(uri);
-            startActivity(intent);
-        }
-
-        File path = Environment.getExternalStorageDirectory();
-        File file = new File(path, fileName);
-
-        content += "\n";
-
-        if (!path.exists()) {
-            path.mkdirs();
-        }
-
-        try {
-            // append to file
-            FileOutputStream writer = new FileOutputStream(file, true);
-            writer.write(content.getBytes());
-            writer.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+//
+//        if (!Environment.isExternalStorageManager()) {
+//            Intent intent = new Intent();
+//            intent.setAction(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+//            Uri uri = Uri.fromParts("package", this.getPackageName(), null);
+//            intent.setData(uri);
+//            startActivity(intent);
+//        }
+//
+//        File path = Environment.getExternalStorageDirectory();
+//        File file = new File(path, fileName);
+//
+//        content += "\n";
+//
+//        if (!path.exists()) {
+//            path.mkdirs();
+//        }
+//
+//        try {
+//            // append to file
+//            FileOutputStream writer = new FileOutputStream(file, true);
+//            writer.write(content.getBytes());
+//            writer.close();
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
 
     }
 
@@ -871,11 +948,47 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
 
     private static final int REQUEST_BLUETOOTH_PERMISSION = 1;
+    private static String[] PERMISSIONS_STORAGE = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_LOCATION_EXTRA_COMMANDS,
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_PRIVILEGED
+    };
+    private static String[] PERMISSIONS_LOCATION = {
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_LOCATION_EXTRA_COMMANDS,
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_PRIVILEGED
+    };
+
 
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        int permission1 = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        int permission2 = ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN);
+        if (permission1 != PackageManager.PERMISSION_GRANTED) {
+            // We don't have permission so prompt the user
+            ActivityCompat.requestPermissions(
+                    this,
+                    PERMISSIONS_STORAGE,
+                    1
+            );
+        } else if (permission2 != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(
+                    this,
+                    PERMISSIONS_LOCATION,
+                    1
+            );
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
@@ -892,6 +1005,35 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                         Manifest.permission.BLUETOOTH_ADMIN
                 }, 1
         );
+
+        //get the spinner from the xml.
+        Spinner filter = findViewById(R.id.date_filter);
+        //create a list of items for the spinner.
+        String[] items = new String[]{LAST_HOUR, LAST_DAY, LAST_10_DAYS, LAST_MONTH, ALL_TIME};
+        //create an adapter to describe how the items are displayed, adapters are used in several places in android.
+        //There are multiple variations of this, but this is the basic variant.
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, items);
+        //set the spinners adapter to the previously created one.
+        filter.setAdapter(adapter);
+
+
+//        Spinner spinner = (Spinner) findViewById(R.id.spinner);
+        filter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+            public void onItemSelected(AdapterView<?> parent, View view,
+            int pos, long id) {
+                // An item was selected. You can retrieve the selected item using
+                // parent.getItemAtPosition(pos)
+                selected_date_filter = (String) parent.getItemAtPosition(pos);
+            }
+
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Another interface callback
+                Toast.makeText(getApplicationContext(), "Nenhum filtro selecionado", Toast.LENGTH_LONG).show();
+            }
+        });
+
+
 
 //        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
 //            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT});
@@ -991,6 +1133,56 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         if (checkPermissions()) {
             initLocationUpdate();
         }
+
+        Button create_pdf = findViewById(R.id.create_pdf);
+        create_pdf.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Calendar c = Calendar.getInstance();
+                Date currentTime = c.getTime();
+
+                c.setTime(currentTime);
+                Date dateBegFilter;
+
+                if (selected_date_filter == LAST_HOUR) {
+                    c.add(Calendar.HOUR, -1);
+                }else if (selected_date_filter == LAST_DAY) {
+                    c.add(Calendar.DATE, -1);
+                }else if (selected_date_filter == LAST_10_DAYS) {
+                    c.add(Calendar.DATE, -10);
+                }else if (selected_date_filter == LAST_MONTH) {
+                    c.add(Calendar.MONTH, -1);
+                }else if (selected_date_filter == ALL_TIME) {
+                    c.add(Calendar.YEAR, -50);
+                }else{
+                    c.add(Calendar.HOUR, -1);
+                }
+                dateBegFilter = c.getTime();
+
+                JSONObject jsonObjPDF = new JSONObject();
+                try {
+                    jsonObjPDF.put("date_beg", fmt.format(dateBegFilter));
+                    jsonObjPDF.put("date_end", fmt.format(currentTime));
+                    jsonObjPDF.put("user_token", userEmail);
+
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+
+                createPDFLambda(jsonObjPDF);
+            }
+        });
+
+/*
+        Preference button = findPreference(getString(R.string.myCoolButton));
+        button.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                //code for what you want it to do
+                return true;
+            }
+        });
+*/
     }
 
 
@@ -1138,7 +1330,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     jsonContent.put(bearing_string);
 
                     String contentString = jsonContent.toString();
-                    Log.d(TAG, "obd.pires.data: Getting bearing data: " + contentString);
+//                    Log.d(TAG, "obd.pires.data: Getting bearing data: " + contentString);
                     writeDataToFile("DELETEME_BEARING.txt", fmt.format(currentTime) + " " + contentString);
                 }
             }
@@ -1563,7 +1755,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 //    }
 
     private void initViewsAndListener() {
-        toast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
+//        toast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
 //        tvLocationDetails=findViewById(R.id.tvLocationDetails);
 //        mainLayout=findViewById(R.id.mainLayout);
 //        findViewById(R.id.btnGetLocation).setOnClickListener(new View.OnClickListener() {
@@ -1699,7 +1891,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 // A permissão foi concedida, você pode continuar com as operações Bluetooth.
             } else {
                 // A permissão foi negada, trate de acordo.
-                Toast.makeText(this, "Problema com permissões", Toast.LENGTH_LONG).show();
+//                Toast.makeText(this, "Problema com permissões", Toast.LENGTH_LONG).show();
             }
         }
 
