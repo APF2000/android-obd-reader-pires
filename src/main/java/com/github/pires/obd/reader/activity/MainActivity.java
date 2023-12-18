@@ -808,6 +808,8 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 obdStatusTextView.setText(getString(R.string.status_obd_data));
         }
 
+        if(cmdResult == "NODATA") return;
+
         if (vv.findViewWithTag(cmdID) != null) {
             TextView existingTV = (TextView) vv.findViewWithTag(cmdID);
             existingTV.setText(cmdResult);
