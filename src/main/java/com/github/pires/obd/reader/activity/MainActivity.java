@@ -229,13 +229,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 //        user_email = prefs.getString(ConfigActivity.UPLOAD_URL_KEY, "");
 //        Log.d(TAG, "user email: " + user_email);
 
-        ActivityCompat.requestPermissions( this,    new String[]{
-                Manifest.permission.BLUETOOTH,
-                Manifest.permission.BLUETOOTH_ADMIN,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.MANAGE_EXTERNAL_STORAGE
-                }, 1
-        );
+//        ActivityCompat.requestPermissions( this,    new String[]{
+//                Manifest.permission.BLUETOOTH,
+//                Manifest.permission.BLUETOOTH_ADMIN,
+//                Manifest.permission.READ_EXTERNAL_STORAGE,
+//                Manifest.permission.MANAGE_EXTERNAL_STORAGE
+//                }, 1
+//        );
 
         // https://stackoverflow.com/questions/6822319/what-to-use-instead-of-addpreferencesfromresource-in-a-preferenceactivity
         // https://developer.android.com/reference/android/preference/PreferenceFragment.html
@@ -250,6 +250,15 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             //                                          int[] grantResults)
             // to handle the case where the user grants the permission. See the documentation
             // for ActivityCompat#requestPermissions for more details.
+            ActivityCompat.requestPermissions(this, new String[]{
+                            Manifest.permission.READ_EXTERNAL_STORAGE,
+                            Manifest.permission.MANAGE_EXTERNAL_STORAGE,
+                            Manifest.permission.BLUETOOTH,
+                            Manifest.permission.BLUETOOTH_CONNECT,
+                            Manifest.permission.BLUETOOTH_SCAN
+                    }, 1
+            );
+
             return;
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -262,12 +271,17 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
         Log.d(TAG, "Entered onStart...");
 
         ActivityCompat.requestPermissions(this, new String[]{
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.MANAGE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.MANAGE_EXTERNAL_STORAGE,
                 Manifest.permission.BLUETOOTH,
-                Manifest.permission.BLUETOOTH_CONNECT
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_SCAN
                 }, 1
         );
+
+//        requestMultiplePermissions.launch(arrayOf(
+//                Manifest.permission.BLUETOOTH_SCAN,
+//                Manifest.permission.BLUETOOTH_CONNECT))
 
         queue = Volley.newRequestQueue(this);
 
@@ -494,7 +508,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
             // backup
 
             String accelerationString = jsonAcceleration.toString();
-            Log.d("arthur", "Getting acceleration data: " + accelerationString);
+//            Log.d("arthur", "Getting acceleration data: " + accelerationString);
             writeDataToFile("DELETEME_ACCELERATION.txt",
                     fmt.format(currentTime) + " " + accelerationString);
 
@@ -725,6 +739,13 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                 Log.e(TAG, "Failure Starting live data");
                 btStatusTextView.setText(getString(R.string.status_bluetooth_error_connecting));
                 doUnbindService();
+            } catch (SecurityException se) {
+                Log.e(TAG, "Failure Starting live data - security exception");
+//                btStatusTextView.setText(getString(R.string.status_bluetooth_error_connecting));
+//                doUnbindService();
+            }catch(Exception e){
+
+                Log.e(TAG, "Failure Starting live data - exception");
             }
         }
 
@@ -919,11 +940,47 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
 
 
     private static final int REQUEST_BLUETOOTH_PERMISSION = 1;
+    private static String[] PERMISSIONS_STORAGE = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_LOCATION_EXTRA_COMMANDS,
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_PRIVILEGED
+    };
+    private static String[] PERMISSIONS_LOCATION = {
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_LOCATION_EXTRA_COMMANDS,
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_PRIVILEGED
+    };
+
 
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        int permission1 = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        int permission2 = ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN);
+        if (permission1 != PackageManager.PERMISSION_GRANTED) {
+            // We don't have permission so prompt the user
+            ActivityCompat.requestPermissions(
+                    this,
+                    PERMISSIONS_STORAGE,
+                    1
+            );
+        } else if (permission2 != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(
+                    this,
+                    PERMISSIONS_LOCATION,
+                    1
+            );
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
@@ -1269,7 +1326,7 @@ public class MainActivity extends RoboActivity implements ObdProgressListener, L
                     jsonContent.put(bearing_string);
 
                     String contentString = jsonContent.toString();
-                    Log.d(TAG, "obd.pires.data: Getting bearing data: " + contentString);
+//                    Log.d(TAG, "obd.pires.data: Getting bearing data: " + contentString);
                     writeDataToFile("DELETEME_BEARING.txt", fmt.format(currentTime) + " " + contentString);
                 }
             }
